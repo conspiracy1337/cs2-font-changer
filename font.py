@@ -410,6 +410,15 @@ class FontManager:
         removed_fonts = self.clean_cs2_fonts(cs2_fonts_dir)
         if removed_fonts > 0:
             print(f"Removed {removed_fonts} custom font files from CS2 directory")
+
+        asimovian_cs2_path = cs2_fonts_dir / "Asimovian-Regular.ttf"
+        if asimovian_cs2_path.exists():
+            try:
+                self.remove_readonly(asimovian_cs2_path)
+                asimovian_cs2_path.unlink()
+                print("Removed Asimovian-Regular.ttf from CS2 directory")
+            except Exception as e:
+                print(f"Warning: Could not remove Asimovian-Regular.ttf: {e}")
         
         # Reset first install flag
         first_install_file = setup_dir / "first_install.txt"

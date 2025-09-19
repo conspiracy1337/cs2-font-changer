@@ -314,13 +314,31 @@ def run_first_install(app_dir, cs2_path):
             raise Exception("42-repl-global.conf template not found")
         
         # Handle stratum2.uifont backup
+        backup_stratum = stratum_path.with_suffix('.uifont.old')
+        
         if stratum_path.exists():
-            backup_stratum = stratum_path.with_suffix('.uifont.old')
+            # File exists - rename it to .old
             if backup_stratum.exists():
                 remove_readonly(backup_stratum)
                 backup_stratum.unlink()
             stratum_path.rename(backup_stratum)
-            print("Backed up stratum2.uifont")
+            print("Backed up existing stratum2.uifont")
+        else:
+            # File doesn't exist - copy from setup backup and rename to .old
+            stratum_source = setup_dir / "stratum2.uifont"
+            if stratum_source.exists():
+                # First copy the backup to the original location
+                shutil.copy2(stratum_source, stratum_path)
+                print("Restored missing stratum2.uifont from setup backup")
+                
+                # Then rename it to .old to create the backup
+                if backup_stratum.exists():
+                    remove_readonly(backup_stratum)
+                    backup_stratum.unlink()
+                stratum_path.rename(backup_stratum)
+                print("Created backup of restored stratum2.uifont")
+            else:
+                print("Warning: stratum2.uifont missing and no backup found in setup directory")
         
         # Auto-install Asimovian-Regular.ttf as default font
         asimovian_source = assets_dir / "Asimovian-Regular.ttf"
