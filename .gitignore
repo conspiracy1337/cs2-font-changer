@@ -1,6 +1,3 @@
 GitManager.ps1
 *.old/
 __pycache__
-todo.txt
-.gitignore
-.git

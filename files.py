@@ -5,7 +5,6 @@ Creates the required .conf and .conf.old template files
 
 from pathlib import Path
 
-
 def create_configuration_files(setup_dir):
     """Create all required configuration files in the setup directory"""
     setup_dir = Path(setup_dir)

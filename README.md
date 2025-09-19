@@ -96,7 +96,7 @@ pip install PyQtWebEngine
 ### Setup
 
 1. Ensure you have the following files in your project directory:
-   - `main.py`, `gui.py`, `font.py`, `browser.py`, `setup.py`, `files.py`
+   - `main.py`, `gui.py`, `font.py`, `browser.py`, `setup.py`, `files.py`, `updater.py`
    - `assets/icon.png` (application icon)
    - `assets/Asimovian-Regular.ttf` (custom font)
    - `assets/stratum2.uifont` (CS2 default font backup)
