@@ -125,14 +125,16 @@ Ensure you have these build files in your project directory:
 #### Build Process
 
 **Option 1: Using the build script (recommended)**
+
+Simply double-click or run:
 ```bash
-# Simply double-click or run:
 build_exe.bat
 ```
 
 **Option 2: Manual build**
+
+Build with PyInstaller
 ```bash
-# Build with PyInstaller
 pyinstaller CS2FontChanger.spec
 ```
 
