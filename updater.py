@@ -14,11 +14,11 @@ import threading
 from pathlib import Path
 from urllib.request import urlopen, urlretrieve, Request
 from urllib.error import URLError, HTTPError
+from version import CURRENT_VERSION
 
 # Configuration
 GITHUB_REPO = "conspiracy1337/cs2-font-changer"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-CURRENT_VERSION = "1.0"
 
 try:
     from PyQt5.QtWidgets import QApplication, QMessageBox

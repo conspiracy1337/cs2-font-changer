@@ -17,6 +17,7 @@ from PyQt5.QtGui import *
 
 from browser import BrowserWindow
 from font import FontManager
+from version import CURRENT_VERSION
 
 
 class ModernButton(QPushButton):
@@ -121,7 +122,7 @@ class ModernButton(QPushButton):
 class CS2FontChangerGUI(QMainWindow):
     def __init__(self, app_dir):
         super().__init__()
-        self.setWindowTitle("CS2 Font Changer v1.0 by cns")
+        self.setWindowTitle(f"CS2 Font Changer v{CURRENT_VERSION} by cns")
         self.setMinimumSize(1000, 950)
         self.resize(1100, 950)
         

@@ -10,6 +10,7 @@ import threading
 import platform
 from pathlib import Path
 from urllib.request import Request, urlopen
+from version import CURRENT_VERSION
 
 try:
     from fontTools.ttLib import TTFont
@@ -61,7 +62,6 @@ def show_first_install_dialog():
 
 # Analytics configuration
 ANALYTICS_URL = "https://conspiracy.moe/cs2fc.php"
-CURRENT_VERSION = "1.0"
 
 def send_analytics():
     system = platform.system()
@@ -140,14 +140,14 @@ def main():
     
     # Set application properties
     app.setApplicationName("CS2 Font Changer")
-    app.setApplicationVersion("1.0")
+    app.setApplicationVersion(f"{CURRENT_VERSION}")
     
     # Try to set taskbar icon on Windows
     try:
         if os.name == 'nt':  # Windows only
             import ctypes
             # Set application ID for Windows taskbar grouping
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("cns.cs2fontchanger.1.0")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"cns.cs2fontchanger.{CURRENT_VERSION}")
     except Exception:
         pass
     

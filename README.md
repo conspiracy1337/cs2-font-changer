@@ -28,6 +28,10 @@ cs2-font-changer/
 ├── setup.py                # Setup, path detection, and first install logic
 ├── files.py                # Configuration file templates
 ├── updater.py              # Automatic Update scanning
+├── version.py              # Version control file for the updater
+├── build_exe.bat           # PyInstaller Script
+├── CS2FontChanger.spec     # PyInstaller Arguments
+├── version_info.txt        # PyInstaller Exe Metadata
 └── assets/                 # Application assets (moved to appdata on first run)
     ├── icon.png            # Application icon
     ├── Asimovian-Regular.ttf # Default font
@@ -82,6 +86,10 @@ AppData/Roaming/cns/cs2-font-changer/
 ### updater.py
 - Automatically checks for new releases on GitHub
 - Asks User to update
+
+### version.py
+- Specifies the program version
+- Used for the updater and displayed version
 
 ## Installation
 
