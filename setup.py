@@ -150,18 +150,49 @@ def remove_readonly(file_path):
         return False
 
 
-def setup_application(app_dir):
+def setup_application(app_dir, work_dir=None):
     """Setup the application directory structure and configuration"""
     app_dir = Path(app_dir)
+    work_dir = Path(work_dir) if work_dir else Path.cwd()
     
     print(f"Setting up application directory: {app_dir}")
     
     # Create required directories
-    directories = ["dl", "auto", "fonts", "setup"]
+    directories = ["dl", "fonts", "setup", "assets"]
     for dir_name in directories:
         dir_path = app_dir / dir_name
         dir_path.mkdir(parents=True, exist_ok=True)
         print(f"Created directory: {dir_path}")
+    
+    # Handle icon.png from work directory/assets
+    icon_source = work_dir / "assets" / "icon.png"
+    icon_dest = app_dir / "assets" / "icon.png"
+    if icon_source.exists() and not icon_dest.exists():
+        try:
+            shutil.copy2(icon_source, icon_dest)
+            print(f"Copied icon.png to assets directory")
+        except Exception as e:
+            print(f"Warning: Could not copy icon.png: {e}")
+    
+    # Handle Asimovian-Regular.ttf from work directory/assets
+    font_source = work_dir / "assets" / "Asimovian-Regular.ttf"
+    font_dest = app_dir / "assets" / "Asimovian-Regular.ttf"
+    if font_source.exists() and not font_dest.exists():
+        try:
+            shutil.copy2(font_source, font_dest)
+            print(f"Copied Asimovian-Regular.ttf to assets directory")
+        except Exception as e:
+            print(f"Warning: Could not copy Asimovian-Regular.ttf: {e}")
+    
+    # Handle stratum2.uifont from work directory/assets
+    stratum_source = work_dir / "assets" / "stratum2.uifont"
+    stratum_dest = app_dir / "setup" / "stratum2.uifont"
+    if stratum_source.exists() and not stratum_dest.exists():
+        try:
+            shutil.copy2(stratum_source, stratum_dest)
+            print(f"Copied stratum2.uifont to setup directory")
+        except Exception as e:
+            print(f"Warning: Could not copy stratum2.uifont: {e}")
     
     # Create configuration files in setup directory using files.py
     try:
@@ -218,6 +249,7 @@ def run_first_install(app_dir, cs2_path):
         app_dir = Path(app_dir)
         cs2_path = Path(cs2_path)
         setup_dir = app_dir / "setup"
+        assets_dir = app_dir / "assets"
         
         # Validate CS2 path
         if not cs2_path.exists():
@@ -235,10 +267,12 @@ def run_first_install(app_dir, cs2_path):
             fonts_conf_path = cs2_path / "game" / "csgo" / "panorama" / "fonts" / "fonts.conf"
             repl_global_path = cs2_path / "game" / "core" / "panorama" / "fonts" / "conf.d" / "42-repl-global.conf"
             stratum_path = cs2_path / "game" / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
+            cs2_fonts_dir = cs2_path / "game" / "csgo" / "panorama" / "fonts"
         else:
             fonts_conf_path = cs2_path / "csgo" / "panorama" / "fonts" / "fonts.conf"
             repl_global_path = cs2_path / "core" / "panorama" / "fonts" / "conf.d" / "42-repl-global.conf"
             stratum_path = cs2_path / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
+            cs2_fonts_dir = cs2_path / "csgo" / "panorama" / "fonts"
         
         # Ensure the target directories exist
         fonts_conf_path.parent.mkdir(parents=True, exist_ok=True)
@@ -279,14 +313,6 @@ def run_first_install(app_dir, cs2_path):
         else:
             raise Exception("42-repl-global.conf template not found")
         
-        # Set files as read-only to prevent CS2 from overwriting them
-        try:
-            os.chmod(fonts_conf_path, stat.S_IREAD)
-            os.chmod(repl_global_path, stat.S_IREAD)
-            print("Set configuration files as read-only")
-        except Exception as e:
-            print(f"Warning: Could not set files as read-only: {e}")
-        
         # Handle stratum2.uifont backup
         if stratum_path.exists():
             backup_stratum = stratum_path.with_suffix('.uifont.old')
@@ -295,6 +321,34 @@ def run_first_install(app_dir, cs2_path):
                 backup_stratum.unlink()
             stratum_path.rename(backup_stratum)
             print("Backed up stratum2.uifont")
+        
+        # Auto-install Asimovian-Regular.ttf as default font
+        asimovian_source = assets_dir / "Asimovian-Regular.ttf"
+        if asimovian_source.exists():
+            from font import FontManager
+            font_manager = FontManager(app_dir, cs2_path)
+            
+            # Get font internal name
+            internal_name = font_manager.get_font_internal_name(asimovian_source)
+            if internal_name:
+                # Copy font to CS2 fonts directory
+                dest_font_path = cs2_fonts_dir / "Asimovian-Regular.ttf"
+                if dest_font_path.exists():
+                    remove_readonly(dest_font_path)
+                    dest_font_path.unlink()
+                shutil.copy2(asimovian_source, dest_font_path)
+                
+                # Update configuration files with Asimovian font
+                font_manager.apply_font_configuration(internal_name, "Asimovian-Regular.ttf")
+                print(f"Auto-installed Asimovian-Regular.ttf as default font")
+        
+        # Set files as read-only to prevent CS2 from overwriting them
+        try:
+            os.chmod(fonts_conf_path, stat.S_IREAD)
+            os.chmod(repl_global_path, stat.S_IREAD)
+            print("Set configuration files as read-only")
+        except Exception as e:
+            print(f"Warning: Could not set files as read-only: {e}")
         
         # Set first_install.txt to FALSE after successful installation
         first_install_file = setup_dir / "first_install.txt"

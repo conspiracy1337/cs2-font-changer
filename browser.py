@@ -128,6 +128,9 @@ class BrowserWindow(QMainWindow):
         self.setMinimumSize(1000, 700)
         self.resize(1200, 800)
         
+        # Persistent download status
+        self.last_download_status = ""
+        
         # Set window icon and styling
         self.setup_window_style()
         self.setup_ui()
@@ -213,11 +216,11 @@ class BrowserWindow(QMainWindow):
             # Add browser to layout
             layout.addWidget(self.browser)
             
-            # Load DaFont
-            self.browser.load(QUrl("https://www.dafont.com"))
+            # Load Google Fonts as default
+            self.browser.load(QUrl("https://fonts.google.com"))
             
             # Setup status bar
-            self.status_label = QLabel("Ready - Adblocker enabled | Cookie auto-accept active")
+            self.status_label = QLabel(self.last_download_status)
             self.status_label.setStyleSheet("color: #f39c12")
             self.statusBar().addWidget(self.status_label)
             
@@ -225,6 +228,7 @@ class BrowserWindow(QMainWindow):
             self.browser.loadStarted.connect(self.on_load_started)
             self.browser.loadProgress.connect(self.on_load_progress)
             self.browser.loadFinished.connect(self.on_load_finished)
+            self.browser.urlChanged.connect(self.on_url_changed)
             
             # Auto-accept cookies
             self.setup_cookie_auto_accept()
@@ -236,12 +240,17 @@ class BrowserWindow(QMainWindow):
             label.setStyleSheet("color: #ffffff; font-size: 16px;")
             layout.addWidget(label)
             
-    def update_download_status(self, message):
-        """Update the status bar with download information"""
+    def on_url_changed(self, url):
+        """Handle URL changes - reset download status to default"""
         if hasattr(self, 'status_label'):
+            self.last_download_status = ""
+            self.status_label.setText(self.last_download_status)
+            
+    def update_download_status(self, message):
+        """Update the status bar with download information (persistent)"""
+        if hasattr(self, 'status_label'):
+            self.last_download_status = message
             self.status_label.setText(message)
-            # Auto-reset status after 3 seconds
-            QTimer.singleShot(3000, lambda: self.status_label.setText("Ready - Adblocker enabled | Cookie auto-accept active"))
             
     def create_toolbar(self):
         """Create browser toolbar"""
@@ -275,7 +284,7 @@ class BrowserWindow(QMainWindow):
         toolbar.addSeparator()
         
         # Download info
-        download_label = QLabel("🔥 Downloads → /DL/ | 🔒 URL: Read-only")
+        download_label = QLabel("📥 Downloads → /DL/ | 🔒 URL: Read-only")
         download_label.setStyleSheet("color: #b0b0b0; font-size: 12px; padding: 5px;")
         toolbar.addWidget(download_label)
         
@@ -290,27 +299,21 @@ class BrowserWindow(QMainWindow):
         
     def on_load_started(self):
         """Called when page loading starts"""
-        if hasattr(self, 'status_label'):
-            self.status_label.setText("Loading...")
+        pass
         
     def on_load_progress(self, progress):
         """Called during page loading"""
-        if hasattr(self, 'status_label'):
-            self.status_label.setText(f"Loading... {progress}%")
+        pass
         
     def on_load_finished(self, success):
         """Called when page loading finishes"""
-        if hasattr(self, 'status_label'):
-            if success:
-                self.status_label.setText("Ready - Adblocker enabled | Cookie auto-accept active")
-                # Update URL bar
-                if hasattr(self, 'url_bar') and hasattr(self, 'browser'):
-                    current_url = self.browser.url().toString()
-                    self.url_bar.setText(current_url)
-                # Auto-accept cookies after page loads
-                self.auto_accept_cookies()
-            else:
-                self.status_label.setText("Failed to load page")
+        if success:
+            # Update URL bar
+            if hasattr(self, 'url_bar') and hasattr(self, 'browser'):
+                current_url = self.browser.url().toString()
+                self.url_bar.setText(current_url)
+            # Auto-accept cookies after page loads
+            self.auto_accept_cookies()
             
     def setup_cookie_auto_accept(self):
         """Setup automatic cookie acceptance"""
@@ -318,7 +321,7 @@ class BrowserWindow(QMainWindow):
         pass
         
     def auto_accept_cookies(self):
-        """Automatically accept cookies on the current page - enhanced for multiple sites"""
+        """Automatically accept cookies on the current page - targeted approach"""
         if not WEBENGINE_AVAILABLE or not hasattr(self, 'browser'):
             return
             
@@ -333,60 +336,35 @@ class BrowserWindow(QMainWindow):
             
         self._processed_urls.add(current_url)
         
-        # Enhanced cookie acceptance script for multiple font sites
+        # Targeted cookie acceptance script for specific font sites only
         cookie_script = """
         (function() {
-            // Enhanced cookie consent selectors for various font sites
+            // Specific selectors for known font sites only
             var cookieSelectors = [
-                // FontGet specific selectors - PRIORITY
+                // Google Fonts
+                'a[class*="callout"][class*="link"]',
+                'a[*ngcontent*][class*="gf-label-large"]',
+                
+                // DaFont
+                'button.sd-cmp-1bquj',
+                'button[class*="sd-cmp"]',
+                
+                // FontGet
                 '#accept-choices',
-                '.sn-b-def.sn-three-btn.sn-adj-fnt.sn-blue',
-                'div[id="accept-choices"]',
-                'div.sn-b-def',
+                'div.sn-b-def.sn-three-btn',
                 
-                // General cookie consent selectors
-                '#cookie-accept', '.cookie-accept', '#accept-cookies', '.accept-cookies',
-                '#cookie-consent-accept', '.cookie-consent-accept', '#gdpr-accept', '.gdpr-accept',
-                '#cookies-accept', '.cookies-accept', '#consent-accept', '.consent-accept',
+                // 1001Fonts
+                '#accept-btn',
+                'button[mode="primary"][id="accept-btn"]',
                 
-                // Other font sites specific selectors
-                '.cookie-consent button', '.cookie-banner button', '#cookieConsent button',
-                '[data-dismiss="cookie"]', '.cookie-notice button', '.gdpr-banner button',
-                '.privacy-overlay button', '.consent-overlay button', '#consent-popup button',
-                '.popup-consent button', '[class*="popup"] button[class*="accept"]',
-                '.modal-consent button', '#privacy-popup button', '.privacy-modal button',
-                
-                // 1001Fonts specific selectors
-                '.cookie-policy button', '.privacy-notice button', '#privacy-policy button',
-                '.consent-banner button', '.cookie-bar button', '#cookie-bar button',
-                
-                // Font Squirrel and other sites
-                '.privacy-popup button', '.consent-popup button', '.cookie-popup button',
-                '#consent-banner button', '.gdpr-popup button', '#privacy-banner button',
-                
-                // Button-specific selectors for cookies
-                'button[id*="cookie"][id*="accept"]', 'button[class*="cookie"][class*="accept"]',
-                'button[id*="consent"][id*="accept"]', 'button[class*="consent"][class*="accept"]',
-                'button[id="cookieAccept"]', 'button[class="cookieAccept"]',
-                'button[id="acceptCookies"]', 'button[class="acceptCookies"]',
-                'button[id*="gdpr"]', 'button[class*="gdpr"]',
-                'button[id*="privacy"]', 'button[class*="privacy"]',
-                
-                // Link-specific selectors
-                'a[id*="cookie"][id*="accept"]', 'a[class*="cookie"][class*="accept"]',
-                'a[id="cookieAccept"]', 'a[class="cookieAccept"]',
-                'a[href*="accept"]', 'a[href*="cookie"]',
-                
-                // Data attributes for cookie consent
-                '[data-cookie="accept"]', '[data-cookie-accept]', '[data-accept-cookies]',
-                '[data-gdpr="accept"]', '[data-consent="accept"]', '[data-dismiss="cookies"]',
-                '[data-action="accept"]', '[data-cookie-consent="accept"]'
+                // Font Squirrel
+                'button.cky-btn.cky-btn-accept',
+                'button[data-cky-tag="accept-button"]'
             ];
             
             var clicked = false;
-            console.log('Starting cookie acceptance script...');
             
-            // Try specific selectors first
+            // Try specific selectors only
             for (var i = 0; i < cookieSelectors.length && !clicked; i++) {
                 try {
                     var elements = document.querySelectorAll(cookieSelectors[i]);
@@ -396,170 +374,41 @@ class BrowserWindow(QMainWindow):
                             element.style.display !== 'none' && !element.disabled &&
                             element.style.visibility !== 'hidden') {
                             
-                            console.log('Found element:', element, 'Selector:', cookieSelectors[i]);
-                            console.log('Element text:', element.textContent);
-                            console.log('Element HTML:', element.outerHTML);
+                            var text = element.textContent.toLowerCase().trim();
                             
-                            // For FontGet div elements that aren't buttons, create a click event
-                            if (element.id === 'accept-choices' || element.className.includes('sn-b-def')) {
-                                // Simulate a proper click event for div elements
-                                var event = new MouseEvent('click', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    view: window
-                                });
-                                element.dispatchEvent(event);
+                            // Only click if text contains expected cookie acceptance terms
+                            if (text.includes('dismiss') || text.includes('accept') || 
+                                text.includes('agree') || text.includes('visit')) {
                                 
-                                // Also try direct click
-                                if (typeof element.click === 'function') {
-                                    element.click();
-                                }
-                                
-                                console.log('Auto-accepted FontGet cookies via specific selector:', cookieSelectors[i], element);
-                                clicked = true;
-                            } else {
-                                // Regular click for other elements
-                                element.click();
-                                console.log('Auto-accepted cookies via specific selector:', cookieSelectors[i], element);
-                                clicked = true;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log('Error with selector', cookieSelectors[i], ':', e);
-                }
-            }
-            
-            // If no specific selectors worked, try comprehensive text-based matching
-            if (!clicked) {
-                var clickableElements = document.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"], div[id*="accept"], div[class*="accept"]');
-                console.log('Trying text-based matching on', clickableElements.length, 'elements');
-                
-                for (var k = 0; k < clickableElements.length && !clicked; k++) {
-                    var elem = clickableElements[k];
-                    if (elem && elem.offsetParent !== null && elem.style.display !== 'none' &&
-                        elem.style.visibility !== 'hidden' && !elem.disabled) {
-                        
-                        var text = elem.textContent.toLowerCase().trim();
-                        var isReasonablySmall = text.length <= 35;
-                        
-                        // Log potential matches for debugging
-                        if (text.includes('accept') || text.includes('cookie') || text.includes('visit')) {
-                            console.log('Found potential cookie element:', elem.tagName, 'Text:', text, 'Length:', text.length, 'ID:', elem.id, 'Classes:', elem.className);
-                        }
-                        
-                        // Enhanced text patterns for cookie acceptance - prioritize FontGet
-                        var isCookieElement = (
-                            // FontGet specific text - check first
-                            text === 'accept all & visit the site' ||
-                            text.includes('accept all & visit') ||
-                            text.includes('accept all and visit') ||
-                            text === 'accept all and visit the site' ||
-                            
-                            // Basic acceptance terms
-                            (text === 'accept' && isReasonablySmall) ||
-                            (text === 'ok' && isReasonablySmall) ||
-                            (text === 'got it' && isReasonablySmall) ||
-                            (text === 'allow' && isReasonablySmall) ||
-                            (text === 'agree' && isReasonablySmall) ||
-                            (text === 'yes' && isReasonablySmall) ||
-                            
-                            // Cookie-specific terms
-                            text === 'accept cookies' ||
-                            text === 'accept all cookies' ||
-                            text === 'accept all' ||
-                            text === 'allow cookies' ||
-                            text === 'allow all' ||
-                            text === 'i agree' ||
-                            text === 'i accept' ||
-                            text === 'continue' ||
-                            text === 'dismiss' ||
-                            text === 'close' ||
-                            
-                            // GDPR and privacy terms
-                            text === 'accept privacy policy' ||
-                            text === 'accept terms' ||
-                            text === 'agree to cookies' ||
-                            text === 'consent' ||
-                            text.includes('accept') && text.includes('cookie') ||
-                            text.includes('accept') && text.includes('privacy') ||
-                            text.includes('accept') && text.includes('terms') ||
-                            text.includes('accept') && text.includes('visit')
-                        );
-                        
-                        if (isCookieElement) {
-                            // Enhanced context checking - look at more parent elements
-                            var hasContext = false;
-                            var contextTerms = ['cookie', 'consent', 'privacy', 'gdpr', 'policy', 'notice', 'banner', 'popup'];
-                            
-                            // Check element's own attributes and classes
-                            var elemContext = (elem.className + ' ' + elem.id + ' ' + (elem.getAttribute('data-') || '')).toLowerCase();
-                            for (var ct = 0; ct < contextTerms.length; ct++) {
-                                if (elemContext.includes(contextTerms[ct])) {
-                                    hasContext = true;
-                                    break;
-                                }
-                            }
-                            
-                            // Check parent elements (up to 5 levels)
-                            if (!hasContext) {
-                                var parentText = '';
-                                var parent = elem.parentElement;
-                                for (var p = 0; p < 5 && parent && !hasContext; p++) {
-                                    var parentContext = parent.textContent.toLowerCase() + ' ' + 
-                                                      parent.className.toLowerCase() + ' ' + 
-                                                      parent.id.toLowerCase();
-                                    parentText += parentContext;
-                                    
-                                    for (var ct = 0; ct < contextTerms.length; ct++) {
-                                        if (parentContext.includes(contextTerms[ct])) {
-                                            hasContext = true;
-                                            break;
-                                        }
-                                    }
-                                    parent = parent.parentElement;
-                                }
-                            }
-                            
-                            // If we found cookie context or it's a very obvious element or FontGet specific, click it
-                            if (hasContext || 
-                                text === 'accept' || text === 'ok' || text === 'got it' ||
-                                text.includes('accept all & visit') || text.includes('accept all and visit')) {
-                                
-                                // Special handling for div elements (like FontGet)
-                                if (elem.tagName.toLowerCase() === 'div') {
+                                // Handle special div elements (FontGet)
+                                if (element.tagName.toLowerCase() === 'div') {
                                     var event = new MouseEvent('click', {
                                         bubbles: true,
                                         cancelable: true,
                                         view: window
                                     });
-                                    elem.dispatchEvent(event);
+                                    element.dispatchEvent(event);
                                     
-                                    if (typeof elem.click === 'function') {
-                                        elem.click();
+                                    if (typeof element.click === 'function') {
+                                        element.click();
                                     }
                                 } else {
-                                    elem.click();
+                                    element.click();
                                 }
                                 
-                                console.log('Auto-accepted cookies via enhanced text matching:', elem, 'Text:', text);
                                 clicked = true;
                             }
                         }
                     }
+                } catch (e) {
+                    // Silently continue on error
                 }
-            }
-            
-            if (clicked) {
-                console.log('Successfully auto-accepted cookies');
-            } else {
-                console.log('No cookie consent elements found');
             }
         })();
         """
         
-        # Execute almost instantly - just enough delay for DOM to be ready
-        QTimer.singleShot(300, lambda: self.browser.page().runJavaScript(cookie_script))
+        # Execute with delay for DOM to be ready
+        QTimer.singleShot(500, lambda: self.browser.page().runJavaScript(cookie_script))
         
     def _clear_processed_urls(self):
         """Clear processed URLs to allow cookie acceptance on manual navigation"""
@@ -613,13 +462,13 @@ class BrowserWindow(QMainWindow):
             }
         """)
         
-        # Add font sites
+        # Add font sites with Google Fonts first
         sites = [
+            ("🎨 Google Fonts", "https://fonts.google.com"),
             ("🏠 DaFont", "https://www.dafont.com"),
             ("📚 FontGet", "https://www.fontget.com"),
-            ("🔥 1001 Fonts", "https://www.1001fonts.com"),
+            ("📥 1001 Fonts", "https://www.1001fonts.com"),
             ("✨ Font Squirrel", "https://www.fontsquirrel.com"),
-            ("🎨 Google Fonts", "https://fonts.google.com"),
         ]
         
         for name, url in sites:

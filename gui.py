@@ -121,28 +121,138 @@ class ModernButton(QPushButton):
 class CS2FontChangerGUI(QMainWindow):
     def __init__(self, app_dir):
         super().__init__()
-        self.setWindowTitle("CS2 Font Changer v3.0 by cns")
-        self.setMinimumSize(1000, 800)
-        self.resize(1100, 1000)
+        self.setWindowTitle("CS2 Font Changer v1.0 by cns")
+        self.setMinimumSize(1000, 950)
+        self.resize(1100, 950)
         
         # Initialize paths
         self.app_dir = Path(app_dir)
         self.dl_dir = self.app_dir / "dl"
         self.fonts_dir = self.app_dir / "fonts"
-        self.auto_dir = self.app_dir / "auto"
         self.setup_dir = self.app_dir / "setup"
+        self.assets_dir = self.app_dir / "assets"
         
         # Variables
         self.cs2_path = None
         self.browser_window = None
         self.font_manager = None
+        self.default_font_family = None
+        
+        # Set application icon
+        self.setup_app_icon()
         
         self.setup_ui()
         self.setup_style()
         self.load_cs2_path()
         
+        # Load default font (Asimovian)
+        self.load_default_font()
+        
         # Initial font list refresh
         self.refresh_font_list()
+        
+    def setup_app_icon(self):
+        """Setup application icon from assets directory"""
+        try:
+            icon_path = self.assets_dir / "icon.png"
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+        except Exception as e:
+            print(f"Warning: Could not set application icon: {e}")
+        
+    def closeEvent(self, event):
+        """Handle main window close event - terminate entire application"""
+        try:
+            # Close browser window if it exists
+            if self.browser_window and self.browser_window.isVisible():
+                self.browser_window.close()
+                self.browser_window = None
+            
+            # Accept the close event and quit the application
+            event.accept()
+            QApplication.quit()
+        except Exception as e:
+            print(f"Error during application shutdown: {e}")
+            event.accept()
+            QApplication.quit()
+        
+    def closeEvent(self, event):
+        """Handle main window close event - terminate entire application"""
+        try:
+            # Close browser window if it exists
+            if self.browser_window and self.browser_window.isVisible():
+                self.browser_window.close()
+                self.browser_window = None
+            
+            # Accept the close event and quit the application
+            event.accept()
+            QApplication.quit()
+        except Exception as e:
+            print(f"Error during application shutdown: {e}")
+            event.accept()
+            QApplication.quit()
+        """Setup application icon from assets directory"""
+        try:
+            icon_path = self.assets_dir / "icon.png"
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+        except Exception as e:
+            print(f"Warning: Could not set application icon: {e}")
+        
+    def load_default_font(self):
+        """Load the default Asimovian font from assets"""
+        try:
+            asimovian_path = self.assets_dir / "Asimovian-Regular.ttf"
+            if asimovian_path.exists():
+                font_id = QFontDatabase.addApplicationFont(str(asimovian_path))
+                if font_id != -1:
+                    font_families = QFontDatabase.applicationFontFamilies(font_id)
+                    if font_families:
+                        self.default_font_family = font_families[0]
+                        print(f"Loaded default font: {self.default_font_family}")
+                        # Apply to title immediately
+                        self.update_title_font()
+        except Exception as e:
+            print(f"Warning: Could not load default font: {e}")
+            
+    def update_title_font(self, custom_font=None):
+        """Update title with specified font or default"""
+        font_family = custom_font or self.default_font_family or "Arial"
+        
+        self.title_label.setStyleSheet(f"""
+            QLabel {{
+                color: #ffffff;
+                font-size: 44px;
+                font-weight: bold;
+                font-family: "{font_family}";
+                margin: 2px;  /* Reduced from 5px */
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0d7377, stop:0.5 #14a085, stop:1 #0d7377);
+                -webkit-background-clip: text;
+                padding: 10px 15px;  /* Reduced vertical padding from 15px to 10px */
+            }}
+        """)
+        
+        self.preview_label.setStyleSheet(f"""
+            QLabel {{
+                color: #b0b0b0;
+                font-size: 18px;
+                font-family: "{font_family}";
+                margin: 5px;
+                padding: 10px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+            }}
+            QLabel a {{
+                color: #b0b0b0;
+                text-decoration: none;
+                font-family: "{font_family}";
+            }}
+            QLabel a:hover {{
+                color: #14a085;
+                text-decoration: underline;
+            }}
+        """)
         
     def setup_ui(self):
         """Setup the main UI with better proportions"""
@@ -194,28 +304,17 @@ class CS2FontChangerGUI(QMainWindow):
     def create_title_section(self):
         """Create the title section with better spacing and font preview"""
         widget = QWidget()
-        widget.setMaximumHeight(220)
-        widget.setMinimumHeight(220)
+        widget.setMaximumHeight(160)  # Increased from 160
+        widget.setMinimumHeight(160)  # Increased from 160
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(15)
+        layout.setSpacing(5)
+        layout.setContentsMargins(0, 10, 0, 10)
         
         self.title_label = QLabel("CS2 Font Changer")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setMinimumHeight(80)
-        self.title_label.setMaximumHeight(80)
-        self.title_label.setStyleSheet("""
-            QLabel {
-                color: #ffffff;
-                font-size: 42px;
-                font-weight: bold;
-                margin: 5px;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #0d7377, stop:0.5 #14a085, stop:1 #0d7377);
-                -webkit-background-clip: text;
-                padding: 15px;
-            }
-        """)
+        self.title_label.setMinimumHeight(80)  # Increased from 80
+        self.title_label.setMaximumHeight(80)  # Increased from 80
         
         # Clickable GitHub link
         self.preview_label = QLabel('<a href="https://github.com/conspiracy1337/cs2-font-changer" style="color: #b0b0b0; text-decoration: none;">github.com/conspiracy1337/cs2-font-changer</a>')
@@ -223,24 +322,6 @@ class CS2FontChangerGUI(QMainWindow):
         self.preview_label.setMinimumHeight(60)
         self.preview_label.setMaximumHeight(60)
         self.preview_label.setOpenExternalLinks(True)
-        self.preview_label.setStyleSheet("""
-            QLabel {
-                color: #b0b0b0;
-                font-size: 18px;
-                margin: 5px;
-                padding: 10px;
-                background: rgba(255,255,255,0.05);
-                border-radius: 8px;
-            }
-            QLabel a {
-                color: #b0b0b0;
-                text-decoration: none;
-            }
-            QLabel a:hover {
-                color: #14a085;
-                text-decoration: underline;
-            }
-        """)
         
         layout.addWidget(self.title_label)
         layout.addWidget(self.preview_label)
@@ -256,13 +337,21 @@ class CS2FontChangerGUI(QMainWindow):
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Select your CS2 installation directory...")
         self.path_edit.setMinimumHeight(40)
+        self.path_edit.returnPressed.connect(self.save_path_from_textbox)  # Save on Enter
         
         browse_btn = ModernButton("Browse", button_type="normal", size="medium")
         browse_btn.setMinimumWidth(120)
+        browse_btn.setMaximumWidth(120)
         browse_btn.clicked.connect(self.browse_cs2_path)
+        
+        open_btn = ModernButton("Open", button_type="normal", size="medium")
+        open_btn.setMinimumWidth(120)
+        open_btn.setMaximumWidth(120)
+        open_btn.clicked.connect(self.open_cs2_path)
         
         layout.addWidget(self.path_edit, 1)
         layout.addWidget(browse_btn)
+        layout.addWidget(open_btn)
         
         return group
         
@@ -273,7 +362,7 @@ class CS2FontChangerGUI(QMainWindow):
         layout.setSpacing(25)
         
         # Download section
-        download_group = QGroupBox("Font Downloads")
+        download_group = QGroupBox("Font Downloader")
         download_layout = QVBoxLayout(download_group)
         download_layout.setSpacing(15)
         
@@ -314,7 +403,11 @@ class CS2FontChangerGUI(QMainWindow):
         
         self.font_combo = QComboBox()
         self.font_combo.setMinimumHeight(43)
+        self.font_combo.setMaximumHeight(43)  # Fix height to prevent shifting
+        self.font_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.font_combo.setMinimumContentsLength(30)  # Ensure consistent width
         self.font_combo.currentTextChanged.connect(self.update_font_preview)
+        self.font_combo.currentTextChanged.connect(self.update_delete_button_state)
         self.font_combo.setStyleSheet("""
             QComboBox {
                 font-size: 13px;
@@ -325,6 +418,8 @@ class CS2FontChangerGUI(QMainWindow):
                 padding: 12px 15px;
                 color: #ffffff;
                 min-height: 43px;
+                max-height: 43px;
+                line-height: 20px;
             }
             QComboBox:focus {
                 border-color: #0d7377;
@@ -346,12 +441,17 @@ class CS2FontChangerGUI(QMainWindow):
                 border: 2px solid #555555;
                 border-radius: 5px;
                 outline: none;
+                max-height: 200px;
+                margin: 0px;
+                padding: 0px;
             }
             QComboBox QAbstractItemView::item {
                 padding: 10px 12px;
                 border-bottom: 1px solid #555555;
                 min-height: 25px;
                 height: 30px;
+                margin: 0px;
+                line-height: 20px;
             }
             QComboBox QAbstractItemView::item:hover {
                 background-color: #0d7377;
@@ -359,15 +459,47 @@ class CS2FontChangerGUI(QMainWindow):
             QComboBox QAbstractItemView::item:selected {
                 background-color: #14a085;
             }
+            QScrollBar:vertical {
+                background: #2d2d2d;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #0d7377;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
         """)
         font_row.addWidget(self.font_combo, 1)
         
+        # Button column for refresh and delete
+        button_column = QVBoxLayout()
+        button_column.setSpacing(5)
+        button_column.setAlignment(Qt.AlignVCenter)  # Center vertically
+        
         refresh_btn = ModernButton("🔄", button_type="normal")
         refresh_btn.setMaximumWidth(80)
-        refresh_btn.setMinimumHeight(40)
+        refresh_btn.setMinimumHeight(19)  # Half of combo box height minus spacing
         refresh_btn.clicked.connect(self.refresh_font_list)
         refresh_btn.setToolTip("Refresh font list")
-        font_row.addWidget(refresh_btn)
+        
+        delete_btn = ModernButton("🗑️", button_type="danger")
+        delete_btn.setMaximumWidth(80)
+        delete_btn.setMinimumHeight(19)  # Half of combo box height minus spacing
+        delete_btn.clicked.connect(self.delete_selected_font)
+        delete_btn.setToolTip("Delete selected font")
+        self.delete_btn = delete_btn  # Store reference for enabling/disabling
+        
+        button_column.addWidget(refresh_btn)
+        button_column.addWidget(delete_btn)
+        
+        font_row.addLayout(button_column)
         
         font_layout.addWidget(font_label)
         font_layout.addLayout(font_row)
@@ -379,14 +511,53 @@ class CS2FontChangerGUI(QMainWindow):
         action_layout = QVBoxLayout(action_section)
         action_layout.setSpacing(15)
         
-        self.apply_btn = ModernButton("✨ Apply Selected Font", button_type="success", size="medium")
+        self.apply_btn = ModernButton("✨ Apply Selected Font", button_type="normal", size="medium")
+        self.apply_btn.setMinimumHeight(45)  # Add 1 extra pixel
+        self.apply_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: 1px solid #1e8449;
+                border-radius: 6px;
+                padding: 12px 24px;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: #2ecc71;
+                border-color: #27ae60;
+            }
+            QPushButton:pressed {
+                background: #219a52;
+            }
+        """)
         self.apply_btn.clicked.connect(self.apply_selected_font)
         
-        restore_btn = ModernButton("🔄 Restore Defaults", button_type="danger", size="medium")
+        restore_btn = ModernButton("🔄 Restore Defaults", button_type="normal", size="medium")
+        restore_btn.setMinimumHeight(45)  # Add 1 extra pixel
+        restore_btn.setStyleSheet("""
+            QPushButton {
+                background: #e74c3c;
+                color: white;
+                border: 1px solid #c0392b;
+                border-radius: 6px;
+                padding: 12px 24px;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: #ec7063;
+                border-color: #e74c3c;
+            }
+            QPushButton:pressed {
+                background: #c0392b;
+            }
+        """)
         restore_btn.clicked.connect(self.restore_defaults)
         
         # New folder button
         folder_btn = ModernButton("📁 Open Data Folder", button_type="normal", size="medium")
+        folder_btn.setMinimumHeight(45)  # Add 1 extra pixel
         folder_btn.clicked.connect(self.open_app_folder)
         
         action_layout.addWidget(self.apply_btn)
@@ -408,29 +579,10 @@ class CS2FontChangerGUI(QMainWindow):
         layout = QVBoxLayout(widget)
         layout.setSpacing(15)
         
-        # Status header
-        header_widget = QWidget()
-        header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        
-        header = QLabel("Activity Logs & Status")
-        header.setStyleSheet("""
-            QLabel {
-                color: #ffffff;
-                font-size: 18px;
-                font-weight: bold;
-                padding: 10px 0;
-            }
-        """)
-        header_layout.addWidget(header)
-        
-        # Clear logs button
-        clear_btn = ModernButton("Clear", button_type="normal")
-        clear_btn.setMaximumWidth(80)
-        clear_btn.clicked.connect(self.clear_logs)
-        header_layout.addWidget(clear_btn)
-        
-        layout.addWidget(header_widget)
+        # Activity Logs group box
+        logs_group = QGroupBox("Activity Logs")
+        logs_layout = QVBoxLayout(logs_group)
+        logs_layout.setSpacing(15)
         
         # Log area with better styling
         self.log_text = QTextEdit()
@@ -449,7 +601,40 @@ class CS2FontChangerGUI(QMainWindow):
                 selection-background-color: #0d7377;
             }
         """)
-        layout.addWidget(self.log_text, 1)
+        
+        # Clear button at bottom center
+        clear_btn = ModernButton("Clear", button_type="normal")
+        clear_btn.setMaximumWidth(100)
+        clear_btn.clicked.connect(self.clear_logs)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background: #666666;
+                color: white;
+                border: 1px solid #555555;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 12px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: #777777;
+                border-color: #666666;
+            }
+            QPushButton:pressed {
+                background: #555555;
+            }
+        """)
+        
+        # Center the clear button
+        clear_layout = QHBoxLayout()
+        clear_layout.addStretch()
+        clear_layout.addWidget(clear_btn)
+        clear_layout.addStretch()
+        
+        logs_layout.addWidget(self.log_text, 1)
+        logs_layout.addLayout(clear_layout)
+        
+        layout.addWidget(logs_group, 1)
         
         return widget
         
@@ -550,9 +735,67 @@ class CS2FontChangerGUI(QMainWindow):
         except Exception as e:
             self.log_message(f"<span style='color: #e74c3c'>Error</span> Error loading CS2 path: {e}")
             
+    def save_path_from_textbox(self):
+        """Save CS2 path when Enter is pressed in textbox"""
+        path = self.path_edit.text().strip()
+        if path and Path(path).exists():
+            self.cs2_path = Path(path)
+            self.font_manager = FontManager(self.app_dir, self.cs2_path)
+            # Save to path.txt
+            try:
+                with open(self.setup_dir / "path.txt", 'w', encoding='utf-8') as f:
+                    f.write(path)
+                self.log_message(f"<span style='color: #f39c12'>Updated</span> CS2 path saved: <code>{path}</code>")
+            except Exception as e:
+                self.log_message(f"<span style='color: #e74c3c'>Error</span> Error saving CS2 path: {e}")
+        elif path:
+            self.log_message(f"<span style='color: #f39c12'>Warning</span> Invalid CS2 path: <code>{path}</code>")
+        
+    def open_cs2_path(self):
+        """Open the CS2 directory in file explorer"""
+        try:
+            path = self.path_edit.text().strip()
+            if not path:
+                QMessageBox.warning(self, "No Path", "Please set a CS2 installation path first")
+                return
+                
+            cs2_path = Path(path)
+            if not cs2_path.exists():
+                QMessageBox.warning(self, "Invalid Path", f"The specified CS2 path does not exist:\n{path}")
+                return
+                
+            if os.name == 'nt':  # Windows
+                os.startfile(str(cs2_path))
+            elif os.name == 'posix':  # macOS and Linux
+                os.system(f'open "{cs2_path}"' if sys.platform == 'darwin' else f'xdg-open "{cs2_path}"')
+            self.log_message(f"<span style='color: #3498db'>Open</span> Opened CS2 directory: <code>{path}</code>")
+        except Exception as e:
+            self.log_message(f"<span style='color: #e74c3c'>Error</span> Could not open CS2 directory: {e}")
+            
     def browse_cs2_path(self):
-        """Browse for CS2 path"""
-        path = QFileDialog.getExistingDirectory(self, "Select CS2 Installation Directory")
+        """Browse for CS2 path starting from current path"""
+        # Get starting directory from current path or default
+        start_dir = ""
+        current_path = self.path_edit.text().strip()
+        if current_path and Path(current_path).exists():
+            start_dir = current_path
+        else:
+            # Try to read from path.txt
+            try:
+                path_file = self.setup_dir / "path.txt"
+                if path_file.exists():
+                    with open(path_file, 'r', encoding='utf-8') as f:
+                        saved_path = f.read().strip()
+                        if saved_path and Path(saved_path).exists():
+                            start_dir = saved_path
+            except:
+                pass
+            
+            # Fallback to common Steam location
+            if not start_dir:
+                start_dir = "C:/Program Files (x86)/Steam/steamapps/common"
+        
+        path = QFileDialog.getExistingDirectory(self, "Select CS2 Installation Directory", start_dir)
         if path:
             self.path_edit.setText(path)
             self.cs2_path = Path(path)
@@ -561,7 +804,7 @@ class CS2FontChangerGUI(QMainWindow):
             try:
                 with open(self.setup_dir / "path.txt", 'w', encoding='utf-8') as f:
                     f.write(path)
-                self.log_message(f"<span style='color: #2ecc71'>Success</span> CS2 path updated: <code>{path}</code>")
+                self.log_message(f"<span style='color: #f39c12'>Updated</span> CS2 path updated: <code>{path}</code>")
             except Exception as e:
                 self.log_message(f"<span style='color: #e74c3c'>Error</span> Error saving CS2 path: {e}")
                 
@@ -608,10 +851,21 @@ class CS2FontChangerGUI(QMainWindow):
         # Process the file
         self.process_downloaded_file(file_path)
         
+        # Auto-refresh font list and select the downloaded font
+        self.refresh_font_list()
+        
+        # Try to auto-select the downloaded font
+        for i in range(self.font_combo.count()):
+            item_text = self.font_combo.itemText(i)
+            if file_path.stem.lower() in item_text.lower():
+                self.font_combo.setCurrentIndex(i)
+                self.log_message(f"<span style='color: #3498db'>Auto-Select</span> Selected downloaded font: <strong>{file_path.name}</strong>")
+                break
+        
     def on_browser_window_closed(self):
         """Handle when browser window is closed manually"""
         self.browser_window = None
-        self.download_btn.setText("Open Font Browser")
+        self.download_btn.setText("🌐 Open Font Browser")
         self.download_btn.button_type = "primary"
         self.download_btn.setup_style()
         self.download_status.setText("Click to open font browser")
@@ -690,19 +944,44 @@ class CS2FontChangerGUI(QMainWindow):
             self.log_message(f"<span style='color: #f39c12'>Warning</span> Warning during directory cleanup: {e}")
             
     def refresh_font_list(self):
-        """Refresh the font selection dropdown"""
+        """Refresh the font selection dropdown with currently installed font first"""
         fonts = []
         added_files = set()  # Track added filenames to avoid duplicates
         
-        # First, add fonts from /auto/ directory with priority
-        if self.auto_dir.exists():
-            for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
-                for font_file in self.auto_dir.glob(pattern):
-                    if font_file.name.lower() not in added_files:
-                        fonts.append(f"⚡ [auto] {font_file.name}")
-                        added_files.add(font_file.name.lower())
+        # Get currently installed font from CS2
+        current_installed_font = None
+        current_installed_filename = None
+        if self.font_manager:
+            current_installed_font = self.font_manager.get_currently_installed_font()
+            
+            # Try to find the filename for the installed font
+            if current_installed_font:
+                for check_dir in [self.fonts_dir, self.assets_dir]:
+                    for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
+                        for font_file in check_dir.glob(pattern):
+                            if self.font_manager.get_font_internal_name(font_file) == current_installed_font:
+                                current_installed_filename = font_file.name
+                                added_files.add(font_file.name.lower())  # Mark as added to avoid duplicates
+                                break
+                        if current_installed_filename:
+                            break
+                    if current_installed_filename:
+                        break
         
-        # Add fonts from /fonts/ directory
+        # First, add currently installed font with checkmark and filename
+        if current_installed_font and current_installed_filename:
+            fonts.append(f"✅ [installed] {current_installed_filename}")
+            self.log_message(f"<span style='color: #5FE3B1'>Info</span> Currently installed font: <strong>{current_installed_font}</strong>")
+        
+        # Second, add Asimovian font from assets (if not currently installed)
+        asimovian_path = self.assets_dir / "Asimovian-Regular.ttf"
+        if asimovian_path.exists():
+            asimovian_name = "Asimovian-Regular.ttf"
+            if asimovian_name.lower() not in added_files:
+                fonts.append(f"⭐ [assets] {asimovian_name}")
+                added_files.add(asimovian_name.lower())
+        
+        # Third, add fonts from /fonts/ directory (skip if already installed)
         if self.fonts_dir.exists():
             for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
                 for font_file in self.fonts_dir.glob(pattern):
@@ -710,27 +989,40 @@ class CS2FontChangerGUI(QMainWindow):
                         fonts.append(f"📁 [fonts] {font_file.name}")
                         added_files.add(font_file.name.lower())
         
-        # Add fonts from /dl/ directory
+        # Fourth, add fonts from /dl/ directory
         if self.dl_dir.exists():
             for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
                 for font_file in self.dl_dir.glob(pattern):
                     if font_file.name.lower() not in added_files:
-                        fonts.append(f"🔥 [dl] {font_file.name}")
+                        fonts.append(f"📥 [dl] {font_file.name}")
                         added_files.add(font_file.name.lower())
         
         # Update combo box
+        # Temporarily disconnect signals to prevent double preview updates
+        self.font_combo.currentTextChanged.disconnect()
+        
         self.font_combo.clear()
         if fonts:
-            sorted_fonts = sorted(fonts)
-            self.font_combo.addItems(sorted_fonts)
+            self.font_combo.addItems(fonts)
             
-            # Update font preview
+            # Reconnect signals
+            self.font_combo.currentTextChanged.connect(self.update_font_preview)
+            self.font_combo.currentTextChanged.connect(self.update_delete_button_state)
+            
+            # Update once after reconnecting
             self.update_font_preview()
+            self.update_delete_button_state()
             
             self.log_message(f"<span style='color: #3498db'>Refresh</span> Font list refreshed - Found <strong>{len(fonts)}</strong> available fonts")
         else:
             self.font_combo.addItem("No fonts available")
-            self.log_message(f"<span style='color: #f39c12'>Warning</span> No font files found in /auto/, /fonts/ or /dl/ directories")
+            
+            # Reconnect signals
+            self.font_combo.currentTextChanged.connect(self.update_font_preview)
+            self.font_combo.currentTextChanged.connect(self.update_delete_button_state)
+            
+            self.update_delete_button_state()  # Disable delete button for no fonts
+            self.log_message(f"<span style='color: #f39c12'>Warning</span> No font files found in any directories")
         
     def apply_selected_font(self):
         """Apply the selected font"""
@@ -746,15 +1038,23 @@ class CS2FontChangerGUI(QMainWindow):
         if not selected or selected == "No fonts available":
             QMessageBox.warning(self, "Font Required", "Please select a font to apply")
             return
+        
+        # Check if currently installed font is selected
+        if selected.startswith("✅ [installed]"):
+            QMessageBox.information(self, "Already Installed", "This font is already installed in CS2.")
+            return
             
         try:
             # Parse selection to determine source directory
-            if selected.startswith("⚡ [auto]"):
-                source_dir = self.auto_dir
-                filename = selected.replace("⚡ [auto] ", "")
-            elif selected.startswith("🔥 [dl]"):
+            if selected.startswith("⭐ [assets]"):
+                source_dir = self.assets_dir
+                filename = selected.replace("⭐ [assets] ", "")
+            elif selected.startswith("✅ [installed]"):
+                source_dir = self.fonts_dir  # Installed fonts are in fonts directory
+                filename = selected.replace("✅ [installed] ", "")
+            elif selected.startswith("📥 [dl]"):
                 source_dir = self.dl_dir
-                filename = selected.replace("🔥 [dl] ", "")
+                filename = selected.replace("📥 [dl] ", "")
             else:
                 source_dir = self.fonts_dir
                 filename = selected.replace("📁 [fonts] ", "")
@@ -773,14 +1073,15 @@ class CS2FontChangerGUI(QMainWindow):
                 shutil.copy2(font_path, dest_path)
                 self.log_message(f"<span style='color: #3498db'>Copy</span> Font copied to /fonts/: <code>{filename}</code>")
                 
-                # Remove from original location
-                try:
-                    font_path.unlink()
-                    self.log_message(f"<span style='color: #2ecc71'>Cleanup</span> Removed from source directory")
-                    self.refresh_font_list()
-                except Exception as e:
-                    self.log_message(f"<span style='color: #f39c12'>Warning</span> Could not remove from source: {e}")
-                    
+                # Remove from original location (except assets)
+                if source_dir != self.assets_dir:
+                    try:
+                        font_path.unlink()
+                        self.log_message(f"<span style='color: #2ecc71'>Cleanup</span> Removed from source directory")
+                        self.refresh_font_list()
+                    except Exception as e:
+                        self.log_message(f"<span style='color: #f39c12'>Warning</span> Could not remove from source: {e}")
+                        
                 font_path = dest_path
                 
             # Get font internal name
@@ -789,13 +1090,18 @@ class CS2FontChangerGUI(QMainWindow):
                 QMessageBox.critical(self, "Font Error", f"Could not read font metadata from: {filename}")
                 return
                 
-            self.log_message(f"<span style='color: #f39c12'>Apply</span> Applying font: <strong>{internal_name}</strong> (<code>{filename}</code>)")
+            self.log_message(f"<span style='color: #f39c12'>Updated</span> Applying font: <strong>{internal_name}</strong> (<code>{filename}</code>)")
             
             # Apply the font using font manager
             self.font_manager.apply_font_to_cs2(internal_name, filename, font_path)
             
-            QMessageBox.information(self, "Success!", f"Font '{internal_name}' has been applied successfully!\n\nRestart CS2 to see the changes.")
             self.log_message(f"<span style='color: #2ecc71'>Success</span> Font applied successfully!")
+            
+            # Refresh font list to update currently installed status BEFORE showing success dialog
+            self.refresh_font_list()
+            
+            # Show success dialog last
+            QMessageBox.information(self, "Success!", f"Font '{internal_name}' has been applied successfully!\n\nRestart CS2 to see the changes.")
             
         except Exception as e:
             self.log_message(f"<span style='color: #e74c3c'>Error</span> Error applying font: {e}")
@@ -806,18 +1112,27 @@ class CS2FontChangerGUI(QMainWindow):
         try:
             selected = self.font_combo.currentText()
             if not selected or selected == "No fonts available":
+                # Use default font if no selection
+                self.update_title_font()
                 return
             
             # Parse selection to get font file path
             font_path = None
-            if selected.startswith("⚡ [auto]"):
-                filename = selected.replace("⚡ [auto] ", "")
-                font_path = self.auto_dir / filename
+            if selected.startswith("✅ [installed]"):
+                # For installed font, look for the filename in fonts directory
+                filename = selected.replace("✅ [installed] ", "")
+                font_path = self.fonts_dir / filename
+                # If not in fonts, check assets
+                if not font_path.exists():
+                    font_path = self.assets_dir / filename
+            elif selected.startswith("⭐ [assets]"):
+                filename = selected.replace("⭐ [assets] ", "")
+                font_path = self.assets_dir / filename
             elif selected.startswith("📁 [fonts]"):
                 filename = selected.replace("📁 [fonts] ", "")
                 font_path = self.fonts_dir / filename
-            elif selected.startswith("🔥 [dl]"):
-                filename = selected.replace("🔥 [dl] ", "")
+            elif selected.startswith("📥 [dl]"):
+                filename = selected.replace("📥 [dl] ", "")
                 font_path = self.dl_dir / filename
             
             if font_path and font_path.exists():
@@ -827,49 +1142,149 @@ class CS2FontChangerGUI(QMainWindow):
                     font_families = QFontDatabase.applicationFontFamilies(font_id)
                     if font_families:
                         font_family = font_families[0]
-                        
-                        # Update title label with custom font
-                        self.title_label.setStyleSheet(f"""
-                            QLabel {{
-                                color: #ffffff;
-                                font-size: 42px;
-                                font-weight: bold;
-                                font-family: "{font_family}";
-                                margin: 5px;
-                                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                    stop:0 #0d7377, stop:0.5 #14a085, stop:1 #0d7377);
-                                -webkit-background-clip: text;
-                                padding: 15px;
-                            }}
-                        """)
-                        
-                        # Update GitHub link with custom font
-                        self.preview_label.setStyleSheet(f"""
-                            QLabel {{
-                                color: #b0b0b0;
-                                font-size: 18px;
-                                font-family: "{font_family}";
-                                margin: 5px;
-                                padding: 10px;
-                                background: rgba(255,255,255,0.05);
-                                border-radius: 8px;
-                            }}
-                            QLabel a {{
-                                color: #b0b0b0;
-                                text-decoration: none;
-                                font-family: "{font_family}";
-                            }}
-                            QLabel a:hover {{
-                                color: #14a085;
-                                text-decoration: underline;
-                            }}
-                        """)
-                        
-                        self.log_message(f"<span style='color: #3498db'>🎨</span> Font preview updated: <strong>{font_family}</strong>")
+                        self.update_title_font(font_family)
+                        self.log_message(f"<span style='color: #f39c12'>Updated</span> Font preview updated: <strong>{font_family}</strong>")
                         
         except Exception as e:
             self.log_message(f"<span style='color: #f39c12'>⚠️</span> Could not update font preview: {e}")
+            # Fallback to default font
+            self.update_title_font()
     
+    def update_delete_button_state(self):
+        """Update delete button state based on selected font"""
+        selected = self.font_combo.currentText()
+        
+        # Disable for Asimovian font (any variant) or no selection
+        is_asimovian = (selected.startswith("⭐ [assets]") or 
+                       (selected.startswith("✅ [installed]") and "Asimovian" in selected) or
+                       selected.endswith("Asimovian-Regular.ttf"))
+        
+        should_disable = (not selected or 
+                         selected == "No fonts available" or 
+                         is_asimovian)
+        
+        if should_disable:
+            self.delete_btn.setEnabled(False)
+            self.delete_btn.setStyleSheet("""
+                QPushButton {
+                    background: #262626;
+                    color: #ffffff;
+                    border: 1px solid #555555;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-size: 12px;
+                    min-height: 19px;
+                    max-height: 19px;
+                }
+            """)
+            self.delete_btn.setToolTip("Cannot delete default Asimovian font")
+        else:
+            self.delete_btn.setEnabled(True)
+            self.delete_btn.setStyleSheet("""
+                QPushButton {
+                    background: #e74c3c;
+                    color: #ffffff;
+                    border: 1px solid #c0392b;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-size: 12px;
+                    min-height: 19px;
+                    max-height: 19px;
+                }
+            """)
+            self.delete_btn.setToolTip("Delete selected font")
+            
+    def delete_selected_font(self):
+        """Delete the selected font with confirmation"""
+        selected = self.font_combo.currentText()
+        if not selected or selected == "No fonts available":
+            QMessageBox.warning(self, "No Selection", "Please select a font to delete")
+            return
+            
+        # Extract font information
+        font_name = ""
+        source_dir = None
+        filename = ""
+        is_installed = selected.startswith("✅ [installed]")
+        
+        if is_installed:
+            font_name = selected.replace("✅ [installed] ", "")
+            # Find the font file in fonts directory
+            for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
+                for font_file in self.fonts_dir.glob(pattern):
+                    if self.font_manager and self.font_manager.get_font_internal_name(font_file) == font_name:
+                        source_dir = self.fonts_dir
+                        filename = font_file.name
+                        break
+                if filename:
+                    break
+        elif selected.startswith("📁 [fonts]"):
+            source_dir = self.fonts_dir
+            filename = selected.replace("📁 [fonts] ", "")
+        elif selected.startswith("📥 [dl]"):
+            source_dir = self.dl_dir
+            filename = selected.replace("📥 [dl] ", "")
+        
+        if not filename:
+            QMessageBox.warning(self, "Error", "Could not locate font file to delete")
+            return
+            
+        # Confirmation dialog
+        if is_installed:
+            reply = QMessageBox.question(self, "Delete Installed Font", 
+                                       f"This will delete the currently installed font '{font_name}' and revert CS2 to the Asimovian font.\n\n"
+                                       f"Are you sure you want to continue?",
+                                       QMessageBox.Yes | QMessageBox.No)
+        else:
+            reply = QMessageBox.question(self, "Delete Font", 
+                                       f"Are you sure you want to delete '{filename}'?",
+                                       QMessageBox.Yes | QMessageBox.No)
+        
+        if reply != QMessageBox.Yes:
+            return
+            
+        try:
+            # Delete from source directory
+            font_path = source_dir / filename
+            if font_path.exists():
+                font_path.unlink()
+                self.log_message(f"<span style='color: #e74c3c'>Deleted</span> Removed font file: <code>{filename}</code>")
+            
+            # If it was the installed font, revert to Asimovian
+            if is_installed and self.font_manager:
+                # Delete from CS2 directory
+                fonts_conf_path, repl_global_path, cs2_fonts_dir = self.font_manager.get_cs2_paths()
+                cs2_font_path = cs2_fonts_dir / filename
+                if cs2_font_path.exists():
+                    self.font_manager.remove_readonly(cs2_font_path)
+                    cs2_font_path.unlink()
+                    self.log_message(f"<span style='color: #e74c3c'>Deleted</span> Removed font from CS2: <code>{filename}</code>")
+                
+                # Apply Asimovian as default
+                asimovian_path = self.assets_dir / "Asimovian-Regular.ttf"
+                if asimovian_path.exists():
+                    # Get font internal name
+                    internal_name = self.font_manager.get_font_internal_name(asimovian_path)
+                    if internal_name:
+                        # Copy to fonts directory if not already there
+                        dest_path = self.fonts_dir / "Asimovian-Regular.ttf"
+                        if not dest_path.exists():
+                            shutil.copy2(asimovian_path, dest_path)
+                            
+                        # Apply the font
+                        self.font_manager.apply_font_to_cs2(internal_name, "Asimovian-Regular.ttf", asimovian_path)
+                        self.log_message(f"<span style='color: #f39c12'>Updated</span> Reverted to Asimovian font")
+                        
+                        # Update GUI preview
+                        self.update_title_font(self.default_font_family)
+                        
+            # Refresh font list
+            self.refresh_font_list()
+            
+        except Exception as e:
+            self.log_message(f"<span style='color: #e74c3c'>Error</span> Error deleting font: {e}")
+            QMessageBox.critical(self, "Delete Error", f"Failed to delete font:\n\n{str(e)}")
+            
     def open_app_folder(self):
         """Open the application folder in file explorer"""
         try:

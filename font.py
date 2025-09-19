@@ -26,8 +26,8 @@ class FontManager:
         self.cs2_path = Path(cs2_path) if cs2_path else None
         self.setup_dir = self.app_dir / "setup"
         self.fonts_dir = self.app_dir / "fonts"
-        self.auto_dir = self.app_dir / "auto"
         self.dl_dir = self.app_dir / "dl"
+        self.assets_dir = self.app_dir / "assets"
         
         # Ignored system fonts that shouldn't be replaced
         self.ignored_fonts = {
@@ -66,6 +66,27 @@ class FontManager:
             return None
         except Exception as e:
             print(f"Error reading font metadata from {ttf_path}: {e}")
+            return None
+    
+    def get_currently_installed_font(self):
+        """Get the currently installed custom font name"""
+        try:
+            fonts_conf_path, repl_global_path, cs2_fonts_dir = self.get_cs2_paths()
+            
+            # Check 42-repl-global.conf for current font
+            if repl_global_path.exists():
+                with open(repl_global_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Look for the first non-system font in assign mode
+                assign_fonts = re.findall(r'<edit name="family" mode="assign">\s*<string>([^<]+)</string>', content)
+                for font in assign_fonts:
+                    if font not in self.ignored_fonts:
+                        return font
+            
+            return None
+        except Exception as e:
+            print(f"Error getting currently installed font: {e}")
             return None
     
     def remove_readonly(self, file_path):
@@ -150,6 +171,36 @@ class FontManager:
         filtered_fonts = [font for font in current_fonts if font not in self.ignored_fonts]
         
         return filtered_fonts, current_fontfiles
+    
+    def apply_font_configuration(self, font_name, font_filename):
+        """Apply font configuration without copying files (used for first install)"""
+        fonts_conf_path, repl_global_path, cs2_fonts_dir = self.get_cs2_paths()
+        
+        # Get current configuration for replacement
+        current_font_names, current_fontfiles = self.analyze_current_fonts(fonts_conf_path, repl_global_path)
+        
+        # Update configuration files
+        try:
+            # Remove read-only attributes
+            self.remove_readonly(fonts_conf_path)
+            self.remove_readonly(repl_global_path)
+            
+            # Update files
+            repl_replacements = self.replace_font_in_repl_global(repl_global_path, current_font_names, font_name)
+            font_replacements, file_replacements = self.replace_font_in_fonts_conf(
+                fonts_conf_path, current_font_names, current_fontfiles, font_name, font_filename
+            )
+            
+            # Set files as read-only to prevent CS2 from overwriting them
+            self.set_readonly(fonts_conf_path)
+            self.set_readonly(repl_global_path)
+            
+            print(f"Font configuration updated:")
+            print(f"  - 42-repl-global.conf: {repl_replacements} replacements")
+            print(f"  - fonts.conf: {font_replacements} font names, {file_replacements} file patterns")
+            
+        except Exception as e:
+            raise Exception(f"Failed to update font configuration: {e}")
     
     def replace_font_in_repl_global(self, file_path, current_font_names, new_font_name):
         """Replace font names in 42-repl-global.conf"""
@@ -285,10 +336,17 @@ class FontManager:
         # Get CS2 paths based on directory structure
         fonts_conf_path, repl_global_path, cs2_fonts_dir = self.get_cs2_paths()
         
+        # Get stratum2.uifont path
+        if (self.cs2_path / "game").exists():
+            stratum_path = self.cs2_path / "game" / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
+        else:
+            stratum_path = self.cs2_path / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
+        
         # Define backup paths from setup directory
         setup_dir = Path(setup_dir)
         fonts_conf_backup = setup_dir / "fonts.conf.old"
         repl_global_backup = setup_dir / "42-repl-global.conf.old"
+        stratum_backup_source = setup_dir / "stratum2.uifont"
         
         files_restored = 0
         
@@ -327,19 +385,26 @@ class FontManager:
         else:
             raise Exception("42-repl-global.conf.old not found in setup directory")
         
-        # Handle stratum2.uifont restoration
-        if (self.cs2_path / "game").exists():
-            stratum_path = self.cs2_path / "game" / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
-        else:
-            stratum_path = self.cs2_path / "csgo" / "panorama" / "fonts" / "stratum2.uifont"
-            
-        stratum_backup = stratum_path.with_suffix('.uifont.old')
-        if stratum_backup.exists():
+        # Handle stratum2.uifont restoration with new logic
+        stratum_backup_cs2 = stratum_path.with_suffix('.uifont.old')
+        
+        if stratum_backup_cs2.exists():
+            # If .old exists in CS2 dir, rename it to stratum2.uifont (restore from CS2 backup)
             if stratum_path.exists():
                 self.remove_readonly(stratum_path)
                 stratum_path.unlink()
-            stratum_backup.rename(stratum_path)
-            print("Restored stratum2.uifont from backup")
+            self.remove_readonly(stratum_backup_cs2)
+            stratum_backup_cs2.rename(stratum_path)
+            print("Restored stratum2.uifont from CS2 backup (.old file)")
+        elif stratum_backup_source.exists():
+            # If no .old in CS2 dir, copy from /setup
+            if stratum_path.exists():
+                self.remove_readonly(stratum_path)
+                stratum_path.unlink()
+            shutil.copy2(stratum_backup_source, stratum_path)
+            print("Restored stratum2.uifont from setup directory")
+        else:
+            print("Warning: No stratum2.uifont backup found")
         
         # Clean up any custom font files from CS2 directory
         removed_fonts = self.clean_cs2_fonts(cs2_fonts_dir)
@@ -358,80 +423,6 @@ class FontManager:
         return files_restored
     
     def apply_font_to_cs2(self, font_name, font_filename, font_path):
-        """Apply font to CS2 configuration"""
-        if not self.cs2_path:
-            raise Exception("CS2 path not set")
-            
-        # Get CS2 paths based on directory structure
-        fonts_conf_path, repl_global_path, cs2_fonts_dir = self.get_cs2_paths()
-        
-        # Ensure directories exist
-        fonts_conf_path.parent.mkdir(parents=True, exist_ok=True)
-        repl_global_path.parent.mkdir(parents=True, exist_ok=True)
-        cs2_fonts_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Clean up old fonts from CS2 directory before applying new one
-        removed_count = self.clean_cs2_fonts(cs2_fonts_dir)
-        if removed_count > 0:
-            print(f"Cleaned up {removed_count} old font files from CS2 directory")
-        
-        # Copy font file to CS2 fonts directory
-        dest_font_path = cs2_fonts_dir / font_filename
-        if dest_font_path.exists():
-            self.remove_readonly(dest_font_path)
-            dest_font_path.unlink()
-        shutil.copy2(font_path, dest_font_path)
-        print(f"Copied font file to CS2: {font_filename}")
-        
-        # Update extension pattern in fonts.conf if needed
-        font_extension = font_path.suffix.lower()
-        try:
-            if fonts_conf_path.exists():
-                with open(fonts_conf_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                extension_updated = False
-                if font_extension == '.otf' and '<fontpattern>.ttf</fontpattern>' in content:
-                    content = content.replace('<fontpattern>.ttf</fontpattern>', '<fontpattern>.otf</fontpattern>')
-                    extension_updated = True
-                elif font_extension == '.ttf' and '<fontpattern>.otf</fontpattern>' in content:
-                    content = content.replace('<fontpattern>.otf</fontpattern>', '<fontpattern>.ttf</fontpattern>')
-                    extension_updated = True
-                
-                if extension_updated:
-                    self.remove_readonly(fonts_conf_path)
-                    with open(fonts_conf_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    print(f"Updated font extension pattern: {font_extension}")
-                    
-        except Exception as e:
-            print(f"Warning: Could not update extension pattern: {e}")
-        
-        # Get current configuration for replacement
-        current_font_names, current_fontfiles = self.analyze_current_fonts(fonts_conf_path, repl_global_path)
-        
-        # Update configuration files
-        try:
-            # Remove read-only attributes
-            self.remove_readonly(fonts_conf_path)
-            self.remove_readonly(repl_global_path)
-            
-            # Update files
-            repl_replacements = self.replace_font_in_repl_global(repl_global_path, current_font_names, font_name)
-            font_replacements, file_replacements = self.replace_font_in_fonts_conf(
-                fonts_conf_path, current_font_names, current_fontfiles, font_name, font_filename
-            )
-            
-            # Set files as read-only to prevent CS2 from overwriting them
-            self.set_readonly(fonts_conf_path)
-            self.set_readonly(repl_global_path)
-            
-            print(f"Font configuration updated:")
-            print(f"  - 42-repl-global.conf: {repl_replacements} replacements")
-            print(f"  - fonts.conf: {font_replacements} font names, {file_replacements} file patterns")
-            
-        except Exception as e:
-            raise Exception(f"Failed to update font configuration: {e}")
         """Apply font to CS2 configuration"""
         if not self.cs2_path:
             raise Exception("CS2 path not set")

@@ -8,10 +8,9 @@ A modern, modular GUI application for changing fonts in Counter-Strike 2. This t
 - **Automatic CS2 Detection**: Automatically finds your CS2 installation path
 - **Font Browser**: Built-in web browser with ad-blocking for downloading fonts
 - **Font Preview**: Live preview of selected fonts in the interface
-- **Modern GUI**: Dark theme with improved usability and custom application icon
-- **Smart Font Management**: Organize fonts across different directories with status indicators
+- **Modern GUI**: Dark theme with improved usability
+- **Font Deletion**: Delete fonts with confirmation and automatic CS2 cleanup
 - **Backup System**: Automatic backup and restoration of original font configurations
-- **Auto-Selection**: Downloaded fonts are automatically selected for immediate application
 
 ## Project Structure
 
@@ -25,13 +24,14 @@ cs2-font-changer/
 ├── browser.py              # Font browser component
 ├── setup.py                # Setup, path detection, and first install logic
 ├── files.py                # Configuration file templates
-├── icon.png                # Application icon (moved to assets on first run)
-├── Asimovian-Regular.ttf   # Default font (moved to assets on first run)
-└── stratum2.uifont         # CS2 default font backup (moved to setup on first run)
+├── updater.py              # Automatic Update scanning
+└── assets/                 # Application assets (moved to appdata on first run)
+    ├── icon.png            # Application icon
+    ├── Asimovian-Regular.ttf # Default font
+    └── stratum2.uifont     # CS2 default font backup
 
 AppData/Roaming/cns/cs2-font-changer/
 ├── dl/                     # Downloaded fonts directory
-├── auto/                   # Auto-processed fonts directory
 ├── fonts/                  # Active fonts directory
 ├── assets/                 # Application assets (icon, default font)
 │   ├── icon.png            # Application icon
@@ -46,18 +46,15 @@ AppData/Roaming/cns/cs2-font-changer/
     └── stratum2.uifont     # CS2 default font backup
 ```
 
-## Module Responsibilities
+## Modules
 
 ### main.py
 - Application entry point and startup logic
-- Asset management (icon, default font, stratum backup)
-- First install workflow coordination
 
 ### gui.py
 - Main GUI interface and user interactions
-- ModernButton class for styled buttons
 - Font selection with status indicators and preview functionality
-- Application workflow management with auto-selection of downloaded fonts
+- Font deletion with confirmation dialogs
 
 ### font.py
 - FontManager class with core font swapping logic
@@ -66,9 +63,8 @@ AppData/Roaming/cns/cs2-font-changer/
 
 ### browser.py
 - Web browser component with ad-blocking
-- Font download management with persistent status
-- Cookie auto-acceptance and Google Fonts default
-- Multiple font site integration
+- Font download management
+- Targeted cookie auto-acceptance for font sites
 
 ### setup.py
 - Automatic CS2 path detection
@@ -77,15 +73,19 @@ AppData/Roaming/cns/cs2-font-changer/
 - Application initialization with default font installation
 
 ### files.py
-- Template creation for all .conf and .old files
-- Preserves original formatting and content
+- Template creation for all .conf files
+- Preserved original formatting and content
+
+### updater.py
+- Automatically checks for new releases on GitHub
+- Asks User to update
 
 ## Installation
 
 ### Requirements
 
 ```bash
-pip install fonttools PyQt5 requests
+pip install fonttools PyQt5
 ```
 
 Optional for browser functionality:
@@ -97,9 +97,9 @@ pip install PyQtWebEngine
 
 1. Ensure you have the following files in your project directory:
    - `main.py`, `gui.py`, `font.py`, `browser.py`, `setup.py`, `files.py`
-   - `icon.png` (application icon)
-   - `Asimovian-Regular.ttf` (default font)
-   - `stratum2.uifont` (CS2 default font backup)
+   - `assets/icon.png` (application icon)
+   - `assets/Asimovian-Regular.ttf` (custom font)
+   - `assets/stratum2.uifont` (CS2 default font backup)
 
 2. Run the application:
 
@@ -115,7 +115,7 @@ On first launch, the application will:
 2. **Create Directory Structure**: Set up all required folders in `AppData/Roaming/cns/cs2-font-changer/`
 3. **Move Assets**: Transfer icon, default font, and backup files to appropriate directories
 4. **Generate Configuration Files**: Create necessary `.conf` and backup files
-5. **Install Default Font**: Automatically apply Asimovian-Regular as the default font
+5. **Install Default Font**: Automatically apply Asimovian-Regular as the custom font
 6. **Initialize Settings**: Set up first install flag and basic configuration
 
 If auto-detection fails, you'll be prompted to manually select your CS2 installation directory.
@@ -126,17 +126,17 @@ If auto-detection fails, you'll be prompted to manually select your CS2 installa
 
 The application features a clean, modern interface with:
 
-- **CS2 Path Configuration**: Set your CS2 installation directory
-- **Font Browser**: Access built-in browser for downloading fonts (Google Fonts default)
-- **Font Selection**: Choose fonts from available directories with status indicators
+- **CS2 Path Configuration**: Set your CS2 installation directory with buttons
+- **Font Browser**: Access built-in browser for downloading fonts
+- **Font Selection**: Choose fonts from available directories
 - **Font Preview**: See selected fonts applied to the interface title
-- **Action Buttons**: Apply fonts, restore defaults, open font folder
+- **Font Management**: Apply, delete, and restore fonts with dedicated buttons
+- **Activity Logs**: Real-time logging of all operations with clear functionality
 
 ### Font Status Indicators
 
-- **✅ [installed]**: Currently installed font in CS2 (always first in list)
-- **⭐ [assets]**: Default Asimovian font (always second if not installed)
-- **⚡ [auto]**: Fonts in auto-processing directory
+- **✅ [installed]**: Currently installed font in CS2 with filename (always first in list)
+- **⭐ [assets]**: Asimovian custom font from assets directory
 - **📁 [fonts]**: Active fonts ready for application
 - **📥 [dl]**: Recently downloaded fonts
 
@@ -148,29 +148,22 @@ The application features a clean, modern interface with:
    - Download fonts directly to the `/dl/` directory
    - Downloaded fonts are automatically selected in the font list
 
-2. **Organize Fonts**:
-   - **Assets Directory**: Contains the default Asimovian font and application icon
-   - **Auto Directory**: Place a font here for automatic processing
-   - **Fonts Directory**: Active fonts ready for application to CS2
-   - **Downloads Directory**: Recently downloaded fonts
-
-3. **Apply Fonts**:
-   - Select a font from the dropdown menu (with status indicators)
+2. **Apply Fonts**:
+   - Select a font from the dropdown menu
    - Click "Apply Selected Font"
    - Fonts are automatically copied to the active fonts directory
    - Configuration files are updated with proper font references
 
+3. **Delete Fonts**:
+   - Select any font (except protected Asimovian)
+   - Click the trashbin button to delete with confirmation
+   - Installed fonts are removed from CS2 and reverted to Asimovian
+   - Duplicate prevention ensures clean font management
+
 4. **Font Preview**:
    - Selected fonts automatically preview in the application title
    - See how fonts will look before applying to CS2
-   - Default Asimovian font used when no selection
-
-### Directory Behavior
-
-- **Assets Directory**: Contains application resources (icon, default font)
-- **Auto Directory**: Fonts placed here are processed automatically and moved to fonts directory
-- **Downloads Directory**: Temporary storage for downloaded fonts with auto-selection
-- **Fonts Directory**: Active fonts available for application to CS2
+   - Asimovian custom font used when no selection was made
 
 ### Restore Defaults
 
@@ -186,47 +179,18 @@ The "Restore Defaults" button will:
 The built-in browser includes:
 
 - **Ad Blocking**: Automatically blocks common advertisement domains and patterns
-- **Cookie Auto-Accept**: Automatically accepts cookie consent dialogs
+- **Targeted Cookie Auto-Accept**: Automatically accepts cookie consent dialogs on font sites
 - **Download Management**: Handles font file downloads to the correct directory
-- **Persistent Status**: Download status remains until new URL or download
-- **Google Fonts Default**: Opens to Google Fonts by default
 
 ### Supported Font Sites
 
-- **Google Fonts** (default, first in menu)
+- Google Fonts
 - DaFont
 - FontGet  
 - 1001 Fonts
 - Font Squirrel
 
-## Configuration Files
-
-### fonts.conf
-Main font configuration file with:
-- Font directory mappings
-- Font pattern definitions
-- Custom font replacements
-- Size adjustments and fallbacks
-
-### 42-repl-global.conf
-Global font replacement configuration:
-- System font replacements
-- Font family mappings
-- Priority font selections
-
-### Template System
-
-Configuration files use placeholder templates:
-- `FONTNAME`: Replaced with selected font's internal name
-- `FONTFILENAME`: Replaced with selected font's filename
-
 ## Technical Details
-
-### Asset Management
-
-1. **Icon Handling**: Application icon moved from work directory to `/assets/` on first run
-2. **Default Font**: Asimovian-Regular.ttf moved to `/assets/` and automatically installed
-3. **Backup Management**: stratum2.uifont moved to `/setup/` for restoration purposes
 
 ### Font Processing
 
@@ -236,6 +200,7 @@ Configuration files use placeholder templates:
 4. **File Management**: Font files are copied to CS2 fonts directory
 5. **Permission Handling**: Read-only attributes are managed automatically
 6. **Status Detection**: Currently installed fonts are detected and displayed
+7. **Duplicate Prevention**: Smart filtering prevents duplicate entries
 
 ### Path Detection
 
@@ -250,7 +215,7 @@ The application uses multiple methods to find CS2:
 
 Enhanced stratum2.uifont restoration:
 1. **Check CS2 Directory**: Look for `.uifont.old` backup in CS2 directory first
-2. **Rename Backup**: If found, rename to `stratum2.uifont` (original CS2 method)
+2. **Rename Backup**: If found, rename to `stratum2.uifont`
 3. **Setup Fallback**: If no CS2 backup, copy from `/setup/` directory
 4. **Clean Restoration**: Ensures complete restoration of original font
 
@@ -278,8 +243,8 @@ Enhanced stratum2.uifont restoration:
 - Fonts can still be manually placed in directories
 
 **Default Font Issues**:
-- Ensure Asimovian-Regular.ttf is in work directory on first run
-- Check `/assets/` directory contains the default font
+- Ensure assets folder contains Asimovian-Regular.ttf
+- Check `/assets/` directory in both work and appdata locations
 - Verify font file is not corrupted
 
 ### File Locations
@@ -293,33 +258,13 @@ You can access this folder using the "Open Data Folder" button in the applicatio
 
 ## Development
 
-### Module Structure
-
-- **main.py**: Entry point, asset management, program startup
-- **gui.py**: Main GUI, event handling, font preview
-- **font.py**: Font management logic, FontManager class
-- **browser.py**: Web browser, download manager, ad blocker
-- **setup.py**: Path detection, first install logic, asset handling
-- **files.py**: CS2 .conf file and backup generation
-
 ### Adding Font Sites
 
 To add new font sites to the browser:
 
 1. Edit `browser.py`
 2. Add site to the `sites` list in `create_font_sites_menu()`
-3. Update cookie selectors if needed for auto-acceptance
-
-## Version History
-
-### v1.0
-- Initial release with complete modular architecture
-- Default Asimovian font included
-- Enhanced font status indicators and auto-selection
-- Google Fonts as default browser site
-- Persistent browser download status
-- Application icon and asset management
-- Improved stratum2.uifont restoration logic
+3. Update cookie selectors in `auto_accept_cookies()` if needed
 
 ## License
 
@@ -332,6 +277,7 @@ Contributions are welcome! Please ensure:
 - Error handling is comprehensive
 - Documentation is updated for new features
 - Asset management is properly handled
+- UI consistency is maintained
 
 ## Support
 
@@ -340,8 +286,8 @@ For issues and support:
 - Verify CS2 path and permissions
 - Ensure all dependencies are installed
 - Test with different font formats
-- Check that required assets are present
+- Check that required assets are present in assets/ folder
 
 ---
 
-**CS2 Font Changer v1.0** - Modern font management for Counter-Strike 2 with default high-quality font included
+**CS2 Font Changer v1.0** - Modern font management for Counter-Strike 2 with comprehensive font deletion and management capabilities
