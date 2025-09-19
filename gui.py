@@ -176,29 +176,6 @@ class CS2FontChangerGUI(QMainWindow):
             event.accept()
             QApplication.quit()
         
-    def closeEvent(self, event):
-        """Handle main window close event - terminate entire application"""
-        try:
-            # Close browser window if it exists
-            if self.browser_window and self.browser_window.isVisible():
-                self.browser_window.close()
-                self.browser_window = None
-            
-            # Accept the close event and quit the application
-            event.accept()
-            QApplication.quit()
-        except Exception as e:
-            print(f"Error during application shutdown: {e}")
-            event.accept()
-            QApplication.quit()
-        """Setup application icon from assets directory"""
-        try:
-            icon_path = self.assets_dir / "icon.png"
-            if icon_path.exists():
-                self.setWindowIcon(QIcon(str(icon_path)))
-        except Exception as e:
-            print(f"Warning: Could not set application icon: {e}")
-        
     def load_default_font(self):
         """Load the default Asimovian font from assets"""
         try:
@@ -225,11 +202,11 @@ class CS2FontChangerGUI(QMainWindow):
                 font-size: 44px;
                 font-weight: bold;
                 font-family: "{font_family}";
-                margin: 2px;  /* Reduced from 5px */
+                margin: 2px;
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #0d7377, stop:0.5 #14a085, stop:1 #0d7377);
                 -webkit-background-clip: text;
-                padding: 10px 15px;  /* Reduced vertical padding from 15px to 10px */
+                padding: 10px 15px;
             }}
         """)
         
@@ -304,8 +281,8 @@ class CS2FontChangerGUI(QMainWindow):
     def create_title_section(self):
         """Create the title section with better spacing and font preview"""
         widget = QWidget()
-        widget.setMaximumHeight(160)  # Increased from 160
-        widget.setMinimumHeight(160)  # Increased from 160
+        widget.setMaximumHeight(160)
+        widget.setMinimumHeight(160)
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(5)
@@ -313,8 +290,8 @@ class CS2FontChangerGUI(QMainWindow):
         
         self.title_label = QLabel("CS2 Font Changer")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setMinimumHeight(80)  # Increased from 80
-        self.title_label.setMaximumHeight(80)  # Increased from 80
+        self.title_label.setMinimumHeight(80)
+        self.title_label.setMaximumHeight(80)
         
         # Clickable GitHub link
         self.preview_label = QLabel('<a href="https://github.com/conspiracy1337/cs2-font-changer" style="color: #b0b0b0; text-decoration: none;">github.com/conspiracy1337/cs2-font-changer</a>')
@@ -337,7 +314,7 @@ class CS2FontChangerGUI(QMainWindow):
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Select your CS2 installation directory...")
         self.path_edit.setMinimumHeight(40)
-        self.path_edit.returnPressed.connect(self.save_path_from_textbox)  # Save on Enter
+        self.path_edit.returnPressed.connect(self.save_path_from_textbox)
         
         browse_btn = ModernButton("Browse", button_type="normal", size="medium")
         browse_btn.setMinimumWidth(120)
@@ -385,12 +362,13 @@ class CS2FontChangerGUI(QMainWindow):
         download_layout.addWidget(self.download_btn)
         download_layout.addWidget(self.download_status)
         
-        # Font selection section
-        selection_group = QGroupBox("Font Selection")
-        selection_layout = QVBoxLayout(selection_group)
+        # Font selection section with custom dropdown
+        self.selection_group = QGroupBox("Font Selection")
+        self.original_group_title = "Font Selection"  # Store original title
+        selection_layout = QVBoxLayout(self.selection_group)
         selection_layout.setSpacing(20)
         
-        # Font selection
+        # Font section container
         font_section = QWidget()
         font_layout = QVBoxLayout(font_section)
         font_layout.setSpacing(10)
@@ -401,13 +379,87 @@ class CS2FontChangerGUI(QMainWindow):
         font_row = QHBoxLayout()
         font_row.setSpacing(10)
         
+        # Create the combo box with custom behavior
         self.font_combo = QComboBox()
         self.font_combo.setMinimumHeight(43)
-        self.font_combo.setMaximumHeight(43)  # Fix height to prevent shifting
-        self.font_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.font_combo.setMinimumContentsLength(30)  # Ensure consistent width
+        self.font_combo.setMaximumHeight(43)
         self.font_combo.currentTextChanged.connect(self.update_font_preview)
         self.font_combo.currentTextChanged.connect(self.update_delete_button_state)
+        
+        # Create custom dropdown overlay
+        self.dropdown_overlay = QWidget(self.selection_group)
+        self.dropdown_overlay.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4e4e4e, stop:1 #3e3e3e);
+                border: 3px solid #0d7377;
+                border-radius: 12px;
+            }
+        """)
+        self.dropdown_overlay.hide()
+        
+        # Set proper attributes for mouse event capture
+        self.dropdown_overlay.setAttribute(Qt.WA_NoMousePropagation)
+        self.dropdown_overlay.setFocusPolicy(Qt.StrongFocus)
+        
+        overlay_layout = QVBoxLayout(self.dropdown_overlay)
+        overlay_layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Font list widget
+        self.font_list = QListWidget()
+        self.font_list.setStyleSheet("""
+            QListWidget {
+                background: transparent;
+                border: none;
+                color: #ffffff;
+                font-size: 13px;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 10px 12px;
+                border-bottom: 1px solid #555555;
+                border-radius: 4px;
+                margin: 1px;
+            }
+            QListWidget::item:hover {
+                background-color: #0d7377;
+            }
+            QListWidget::item:selected {
+                background-color: #14a085;
+            }
+            QScrollBar:vertical {
+                background: #2d2d2d;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #0d7377;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+        self.font_list.itemClicked.connect(self.on_font_selected)
+        
+        overlay_layout.addWidget(self.font_list)
+        
+        # Override combo box mouse press to show custom dropdown
+        original_mousePressEvent = self.font_combo.mousePressEvent
+        def custom_mousePressEvent(event):
+            if event.button() == Qt.LeftButton:
+                self.show_custom_dropdown()
+            else:
+                original_mousePressEvent(event)
+        self.font_combo.mousePressEvent = custom_mousePressEvent
+        
+        # Prevent normal dropdown
+        self.font_combo.showPopup = lambda: None
+        
         self.font_combo.setStyleSheet("""
             QComboBox {
                 font-size: 13px;
@@ -433,68 +485,27 @@ class CS2FontChangerGUI(QMainWindow):
                 width: 0px;
                 height: 0px;
             }
-            QComboBox QAbstractItemView {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #4e4e4e, stop:1 #3e3e3e);
-                color: #ffffff;
-                selection-background-color: #0d7377;
-                border: 2px solid #555555;
-                border-radius: 5px;
-                outline: none;
-                max-height: 200px;
-                margin: 0px;
-                padding: 0px;
-            }
-            QComboBox QAbstractItemView::item {
-                padding: 10px 12px;
-                border-bottom: 1px solid #555555;
-                min-height: 25px;
-                height: 30px;
-                margin: 0px;
-                line-height: 20px;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #0d7377;
-            }
-            QComboBox QAbstractItemView::item:selected {
-                background-color: #14a085;
-            }
-            QScrollBar:vertical {
-                background: #2d2d2d;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: #555555;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #0d7377;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
         """)
+        
         font_row.addWidget(self.font_combo, 1)
         
         # Button column for refresh and delete
         button_column = QVBoxLayout()
         button_column.setSpacing(5)
-        button_column.setAlignment(Qt.AlignVCenter)  # Center vertically
+        button_column.setAlignment(Qt.AlignVCenter)
         
         refresh_btn = ModernButton("🔄", button_type="normal")
         refresh_btn.setMaximumWidth(80)
-        refresh_btn.setMinimumHeight(19)  # Half of combo box height minus spacing
+        refresh_btn.setMinimumHeight(19)
         refresh_btn.clicked.connect(self.refresh_font_list)
         refresh_btn.setToolTip("Refresh font list")
         
         delete_btn = ModernButton("🗑️", button_type="danger")
         delete_btn.setMaximumWidth(80)
-        delete_btn.setMinimumHeight(19)  # Half of combo box height minus spacing
+        delete_btn.setMinimumHeight(19)
         delete_btn.clicked.connect(self.delete_selected_font)
         delete_btn.setToolTip("Delete selected font")
-        self.delete_btn = delete_btn  # Store reference for enabling/disabling
+        self.delete_btn = delete_btn
         
         button_column.addWidget(refresh_btn)
         button_column.addWidget(delete_btn)
@@ -512,7 +523,7 @@ class CS2FontChangerGUI(QMainWindow):
         action_layout.setSpacing(15)
         
         self.apply_btn = ModernButton("✨ Apply Selected Font", button_type="normal", size="medium")
-        self.apply_btn.setMinimumHeight(45)  # Add 1 extra pixel
+        self.apply_btn.setMinimumHeight(45)
         self.apply_btn.setStyleSheet("""
             QPushButton {
                 background: #27ae60;
@@ -534,7 +545,7 @@ class CS2FontChangerGUI(QMainWindow):
         self.apply_btn.clicked.connect(self.apply_selected_font)
         
         restore_btn = ModernButton("🔄 Restore Defaults", button_type="normal", size="medium")
-        restore_btn.setMinimumHeight(45)  # Add 1 extra pixel
+        restore_btn.setMinimumHeight(45)
         restore_btn.setStyleSheet("""
             QPushButton {
                 background: #e74c3c;
@@ -555,9 +566,8 @@ class CS2FontChangerGUI(QMainWindow):
         """)
         restore_btn.clicked.connect(self.restore_defaults)
         
-        # New folder button
         folder_btn = ModernButton("📁 Open Data Folder", button_type="normal", size="medium")
-        folder_btn.setMinimumHeight(45)  # Add 1 extra pixel
+        folder_btn.setMinimumHeight(45)
         folder_btn.clicked.connect(self.open_app_folder)
         
         action_layout.addWidget(self.apply_btn)
@@ -568,10 +578,81 @@ class CS2FontChangerGUI(QMainWindow):
         
         # Add sections to left panel
         layout.addWidget(download_group)
-        layout.addWidget(selection_group)
+        layout.addWidget(self.selection_group)
         layout.addStretch()
         
+        # Install event filter to close dropdown on outside clicks
+        QApplication.instance().installEventFilter(self)
+        
         return widget
+        
+    def show_custom_dropdown(self):
+        """Show the custom dropdown overlay"""
+        try:
+            # Hide the group box title for cleaner transformation
+            self.selection_group.setTitle("")
+            
+            # Update the font list items
+            self.font_list.clear()
+            for i in range(self.font_combo.count()):
+                item_text = self.font_combo.itemText(i)
+                self.font_list.addItem(item_text)
+                
+            # Select current item
+            current_index = self.font_combo.currentIndex()
+            if current_index >= 0:
+                self.font_list.setCurrentRow(current_index)
+                
+            # Position overlay to perfectly align with group box border
+            # With no title, we can use the full group box area
+            group_rect = self.selection_group.rect()
+            self.dropdown_overlay.setGeometry(group_rect)
+            self.dropdown_overlay.show()
+            self.dropdown_overlay.raise_()
+            
+        except Exception as e:
+            self.log_message(f"<span style='color: #e74c3c'>Error</span> Error showing dropdown: {e}")
+            
+    def hide_custom_dropdown(self):
+        """Hide the custom dropdown overlay"""
+        self.dropdown_overlay.hide()
+        # Restore the group box title
+        self.selection_group.setTitle(self.original_group_title)
+        
+    def on_font_selected(self, item):
+        """Handle font selection from custom dropdown"""
+        try:
+            # Find the corresponding index in the combo box
+            selected_text = item.text()
+            for i in range(self.font_combo.count()):
+                if self.font_combo.itemText(i) == selected_text:
+                    self.font_combo.setCurrentIndex(i)
+                    break
+                    
+            # Hide the dropdown
+            self.hide_custom_dropdown()
+            
+        except Exception as e:
+            self.log_message(f"<span style='color: #e74c3c'>Error</span> Error selecting font: {e}")
+            
+    def eventFilter(self, obj, event):
+        """Event filter to close dropdown on outside clicks"""
+        if event.type() == QEvent.MouseButtonPress:
+            # Check if click is outside the dropdown overlay
+            if self.dropdown_overlay.isVisible():
+                # Convert global position to widget coordinates
+                overlay_pos = self.dropdown_overlay.mapFromGlobal(event.globalPos())
+                list_pos = self.font_list.mapFromGlobal(event.globalPos())
+                
+                # If click is not inside the overlay or list widget, close dropdown
+                if (not self.dropdown_overlay.rect().contains(overlay_pos) and
+                    not self.font_list.rect().contains(list_pos) and
+                    obj != self.dropdown_overlay and
+                    obj != self.font_list):
+                    self.hide_custom_dropdown()
+                    return True  # Consume the event to prevent it from reaching other widgets
+                
+        return super().eventFilter(obj, event)
         
     def create_right_panel(self):
         """Create the right panel (status logs)"""

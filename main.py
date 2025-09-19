@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import threading
+import platform
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -47,12 +48,10 @@ def show_first_install_dialog():
     msg = QMessageBox()
     msg.setWindowTitle("CS2 Font Changer - First Install")
     msg.setIcon(QMessageBox.Question)
-    msg.setText("First Time Setup")
     msg.setInformativeText(
-        "This appears to be the first time running CS2 Font Changer.\n\n"
+        "This is the CS2 Font Changer first time setup.\n\n"
         "Would you like to install custom font support?\n\n"
-        "This will backup your current CS2 font configuration files\n"
-        "and set up the system for custom fonts."
+        "This will backup your CS2 font configuration files.\n"
     )
     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
     msg.setDefaultButton(QMessageBox.Yes)
@@ -61,11 +60,15 @@ def show_first_install_dialog():
 
 
 # Analytics configuration
-ANALYTICS_URL = "https://www.conspiracy.moe/cs2fc.php"
+ANALYTICS_URL = "https://conspiracy.moe/cs2fc.php"
 CURRENT_VERSION = "1.0"
 
 def send_analytics():
-    """Send analytics data to tracking endpoint"""
+    system = platform.system()
+    release = platform.release()
+    machine = platform.machine()
+    pyver = f"Python/{platform.python_version()}"
+
     def analytics_request():
         try:
             # Determine if running from EXE
@@ -77,8 +80,9 @@ def send_analytics():
             # Prepare analytics data
             analytics_data = {
                 'version': CURRENT_VERSION,
-                'platform': sys.platform,
-                'is_exe': is_exe
+                'platform': f"{system} {release}; {machine}",
+                'python': f'{pyver}',
+                'is_exe': "YES" if is_exe else "NO"
             }
             
             # Create request
@@ -86,17 +90,14 @@ def send_analytics():
                 ANALYTICS_URL,
                 data=json.dumps(analytics_data).encode('utf-8'),
                 headers={
-                    'Content-Type': 'application/json',
-                    'User-Agent': f'CS2FontChanger/{CURRENT_VERSION}'
+                    'Content-Type': 'application/json'
                 }
             )
             
-            # Send request with timeout
             with urlopen(request, timeout=5) as response:
                 pass
                 
         except Exception:
-            # Silently ignore analytics failures
             pass
     
     # Run analytics in background thread
@@ -105,7 +106,6 @@ def send_analytics():
 
 
 def main():
-    """Main function to run the application"""
     # Suppress Qt WebEngine console output completely
     os.environ['QT_LOGGING_RULES'] = '*=false'
     os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--disable-logging --disable-gpu-sandbox --log-level=3 --silent'
@@ -132,7 +132,7 @@ def main():
         from PyQt5.QtCore import Qt, QCoreApplication
         QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     except:
-        pass  # Ignore if Qt attributes aren't available
+        pass
         
     # Initialize QApplication first (needed for message boxes)
     app = QApplication(sys.argv)
@@ -149,7 +149,7 @@ def main():
             # Set application ID for Windows taskbar grouping
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("cns.cs2fontchanger.1.0")
     except Exception:
-        pass  # Ignore if not available
+        pass
     
     # Get directories
     work_dir = Path(__file__).parent  # Directory where main.py is located
@@ -213,7 +213,7 @@ def main():
             else:
                 QMessageBox.information(None, "Installation Complete", 
                                       "Custom font support has been installed successfully!\n\n"
-                                      "The default Asimovian font has been applied to CS2.\n\n"
+                                      "The Asimovian custom font has been applied to CS2.\n\n"
                                       "You can now use the font changer to apply other custom fonts.")
         else:
             # User chose No - exit immediately

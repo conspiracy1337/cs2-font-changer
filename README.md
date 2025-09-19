@@ -1,6 +1,6 @@
 # CS2 Font Changer v1.0
 
-A modern, modular GUI application for changing fonts in Counter-Strike 2. This tool provides automatic CS2 path detection, built-in font browser, and comprehensive font management with a default high-quality font included.
+A modern GUI application for changing fonts in Counter-Strike 2. This tool provides automatic CS2 path detection, built-in font browser, and comprehensive font management with a default high-quality font included.
 
 ## Features
 
