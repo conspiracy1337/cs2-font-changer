@@ -110,6 +110,41 @@ pip install PyQtWebEngine
 python main.py
 ```
 
+### Building a .exe file
+
+To create a standalone executable (.exe) for CS2FontChanger follow these instructions:
+
+#### Build Files
+
+Ensure you have these build files in your project directory:
+
+1. **CS2FontChanger.spec** - PyInstaller specification file
+2. **build_exe.bat** - Automated build script  
+3. **version_info.txt** - Windows executable metadata (optional)
+
+#### Build Process
+
+**Option 1: Using the build script (recommended)**
+```bash
+# Simply double-click or run:
+build_exe.bat
+```
+
+**Option 2: Manual build**
+```bash
+# Build with PyInstaller
+pyinstaller CS2FontChanger.spec
+```
+
+#### Output
+
+The executable will be created at:
+```
+dist/CS2FontChanger.exe
+```
+
+This is a standalone executable (~110MB) that includes all dependencies and can run on systems without Python installed.
+
 ### First Time Setup
 
 On first launch, the application will:
