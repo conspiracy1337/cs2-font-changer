@@ -11,6 +11,7 @@ import zipfile
 import tempfile
 import subprocess
 import threading
+import re
 from pathlib import Path
 from urllib.request import urlopen, urlretrieve, Request
 from urllib.error import URLError, HTTPError
@@ -98,6 +99,52 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
         except ValueError:
             return current != latest
     
+    def update_version_file(self, new_version):
+        """Update the CURRENT_VERSION in version.py"""
+        try:
+            version_file = self.current_dir / "version.py"
+            if not version_file.exists():
+                # Create version.py if it doesn't exist
+                with open(version_file, 'w') as f:
+                    f.write(f'# Current version of CS2 Font Changer\nCURRENT_VERSION = "{new_version}"\n')
+                return True
+            
+            # Read current content
+            with open(version_file, 'r') as f:
+                content = f.read()
+            
+            # Update the version using regex to handle different formats
+            updated_content = re.sub(
+                r'CURRENT_VERSION\s*=\s*["\'][\d.]+["\']',
+                f'CURRENT_VERSION = "{new_version}"',
+                content
+            )
+            
+            # Write updated content back
+            with open(version_file, 'w') as f:
+                f.write(updated_content)
+            
+            return True
+        except Exception as e:
+            print(f"Failed to update version file: {e}")
+            return False
+    
+    def extract_version_from_source(self, source_dir):
+        """Extract version from downloaded source code"""
+        try:
+            version_file = source_dir / "version.py"
+            if version_file.exists():
+                with open(version_file, 'r') as f:
+                    content = f.read()
+                
+                # Extract version using regex
+                match = re.search(r'CURRENT_VERSION\s*=\s*["\']([^"\']+)["\']', content)
+                if match:
+                    return match.group(1)
+            return None
+        except Exception:
+            return None
+    
     def run(self):
         """Background thread execution"""
         # Check for updates (analytics removed - now handled in main.py)
@@ -138,10 +185,15 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
                 shutil.rmtree(backup_dir)
             backup_dir.mkdir()
             
+            success = False
             if self.is_exe:
-                self.update_exe_version(release_info['exe_url'], backup_dir)
+                success = self.update_exe_version(release_info['exe_url'], backup_dir, release_info['version'])
             else:
-                self.update_source_version(release_info['source_url'], backup_dir)
+                success = self.update_source_version(release_info['source_url'], backup_dir, release_info['version'])
+            
+            # Update version file after successful update
+            if success:
+                self.update_version_file(release_info['version'])
                 
         except Exception as e:
             if QT_AVAILABLE:
@@ -149,7 +201,7 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
             else:
                 print(f"Update failed: {e}")
     
-    def update_exe_version(self, exe_url, backup_dir):
+    def update_exe_version(self, exe_url, backup_dir, new_version):
         """Update EXE version"""
         if not exe_url:
             raise Exception("No EXE download available")
@@ -192,11 +244,13 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
             # Create update script
             self.create_exe_update_script(new_exe_path, current_exe)
             
+            return True
+            
         finally:
             if self.temp_dir and self.temp_dir.exists():
                 shutil.rmtree(self.temp_dir)
     
-    def update_source_version(self, source_url, backup_dir):
+    def update_source_version(self, source_url, backup_dir, new_version):
         """Update source code version"""
         self.temp_dir = Path(tempfile.mkdtemp())
         
@@ -219,8 +273,13 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
             
             source_dir = repo_dirs[0]
             
-            # Update source files
-            source_files = ["main.py", "gui.py", "font.py", "browser.py", "setup.py", "files.py"]
+            # Extract version from source if available
+            extracted_version = self.extract_version_from_source(source_dir)
+            if extracted_version:
+                new_version = extracted_version
+            
+            # Update source files (including version.py)
+            source_files = ["main.py", "gui.py", "font.py", "browser.py", "setup.py", "files.py", "version.py"]
             updated_files = []
             
             for file_name in source_files:
@@ -236,11 +295,33 @@ class SilentUpdater(QThread if QT_AVAILABLE else object):
                     shutil.copy2(source_file, target_file)
                     updated_files.append(file_name)
             
+            # If version.py wasn't in the source, update it manually
+            if "version.py" not in updated_files:
+                # Backup existing version.py
+                version_file = self.current_dir / "version.py"
+                if version_file.exists():
+                    shutil.copy2(version_file, backup_dir / "version.py")
+            
             if QT_AVAILABLE:
-                QMessageBox.information(None, "Update Complete", 
-                    f"Successfully updated {len(updated_files)} files.\nPlease restart the application.")
+                msg = QMessageBox()
+                msg.setWindowTitle("Update Complete")
+                msg.setIcon(QMessageBox.Information)
+                msg.setText(f"Successfully updated to version {new_version}.\n"
+                           f"Updated {len(updated_files)} files.\nPlease restart the application.")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+                
+                # Terminate the entire application after user presses OK
+                if QApplication.instance():
+                    QApplication.instance().quit()
+                sys.exit(0)
             else:
-                print(f"Successfully updated {len(updated_files)} files. Please restart the application.")
+                print(f"Successfully updated to version {new_version}. "
+                      f"Updated {len(updated_files)} files. Please restart the application.")
+                input("Press Enter to exit...")
+                sys.exit(0)
+            
+            return True
             
         finally:
             if self.temp_dir and self.temp_dir.exists():
