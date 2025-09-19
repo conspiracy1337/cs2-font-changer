@@ -34,15 +34,15 @@ cs2-font-changer/
 ├── version_info.txt        # PyInstaller Exe Metadata
 └── assets/                 # Application assets (moved to appdata on first run)
     ├── icon.png            # Application icon
-    ├── Asimovian-Regular.ttf # Default font
+    ├── Asimovian-Regular.ttf # Custom font
     └── stratum2.uifont     # CS2 default font backup
 
 AppData/Roaming/cns/cs2-font-changer/
 ├── dl/                     # Downloaded fonts directory
 ├── fonts/                  # Active fonts directory
-├── assets/                 # Application assets (icon, default font)
+├── assets/                 # Application assets (icon, custom font)
 │   ├── icon.png            # Application icon
-│   └── Asimovian-Regular.ttf # Default font
+│   └── Asimovian-Regular.ttf # Custom font
 └── setup/                  # Configuration and setup files
     ├── path.txt            # CS2 installation path
     ├── first_install.txt   # First install flag (TRUE/FALSE)
@@ -77,7 +77,7 @@ AppData/Roaming/cns/cs2-font-changer/
 - Automatic CS2 path detection
 - First install logic and file processing
 - Directory structure creation with asset management
-- Application initialization with default font installation
+- Application initialization with custom font installation
 
 ### files.py
 - Template creation for all .conf files
