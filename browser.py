@@ -128,8 +128,12 @@ class BrowserWindow(QMainWindow):
         self.setMinimumSize(1000, 700)
         self.resize(1200, 800)
         
-        # Persistent download status
+        # Persistent download status with timer
         self.last_download_status = ""
+        self.download_status_timer = QTimer()
+        self.download_status_timer.setSingleShot(True)
+        self.download_status_timer.timeout.connect(self.allow_status_clear)
+        self.status_clear_allowed = True
         
         # Set window icon and styling
         self.setup_window_style()
@@ -241,16 +245,25 @@ class BrowserWindow(QMainWindow):
             layout.addWidget(label)
             
     def on_url_changed(self, url):
-        """Handle URL changes - reset download status to default"""
-        if hasattr(self, 'status_label'):
+        """Handle URL changes - only clear download status if timer allows"""
+        if hasattr(self, 'status_label') and self.status_clear_allowed:
             self.last_download_status = ""
             self.status_label.setText(self.last_download_status)
             
     def update_download_status(self, message):
-        """Update the status bar with download information (persistent)"""
+        """Update the status bar with download information (persistent for 5 seconds)"""
         if hasattr(self, 'status_label'):
             self.last_download_status = message
             self.status_label.setText(message)
+            
+            # Prevent status clearing for 5 seconds
+            self.status_clear_allowed = False
+            self.download_status_timer.stop()  # Stop any existing timer
+            self.download_status_timer.start(5000)  # Start 5-second timer
+            
+    def allow_status_clear(self):
+        """Called by timer after 5 seconds to allow status clearing"""
+        self.status_clear_allowed = True
             
     def create_toolbar(self):
         """Create browser toolbar"""

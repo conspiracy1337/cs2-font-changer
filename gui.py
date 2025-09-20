@@ -208,6 +208,7 @@ class CS2FontChangerGUI(QMainWindow):
                     stop:0 #0d7377, stop:0.5 #14a085, stop:1 #0d7377);
                 -webkit-background-clip: text;
                 padding: 10px 15px;
+                border-radius: 8px;
             }}
         """)
         
@@ -604,9 +605,10 @@ class CS2FontChangerGUI(QMainWindow):
             if current_index >= 0:
                 self.font_list.setCurrentRow(current_index)
                 
-            # Position overlay to perfectly align with group box border
-            # With no title, we can use the full group box area
+            # Position overlay to cover the group box content area
             group_rect = self.selection_group.rect()
+            
+            # Simple positioning - cover the entire group box
             self.dropdown_overlay.setGeometry(group_rect)
             self.dropdown_overlay.show()
             self.dropdown_overlay.raise_()
@@ -1076,7 +1078,7 @@ class CS2FontChangerGUI(QMainWindow):
             for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
                 for font_file in self.dl_dir.glob(pattern):
                     if font_file.name.lower() not in added_files:
-                        fonts.append(f"📥 [dl] {font_file.name}")
+                        fonts.append(f"🔥 [dl] {font_file.name}")
                         added_files.add(font_file.name.lower())
         
         # Update combo box
@@ -1134,9 +1136,9 @@ class CS2FontChangerGUI(QMainWindow):
             elif selected.startswith("✅ [installed]"):
                 source_dir = self.fonts_dir  # Installed fonts are in fonts directory
                 filename = selected.replace("✅ [installed] ", "")
-            elif selected.startswith("📥 [dl]"):
+            elif selected.startswith("🔥 [dl]"):
                 source_dir = self.dl_dir
-                filename = selected.replace("📥 [dl] ", "")
+                filename = selected.replace("🔥 [dl] ", "")
             else:
                 source_dir = self.fonts_dir
                 filename = selected.replace("📁 [fonts] ", "")
@@ -1213,8 +1215,8 @@ class CS2FontChangerGUI(QMainWindow):
             elif selected.startswith("📁 [fonts]"):
                 filename = selected.replace("📁 [fonts] ", "")
                 font_path = self.fonts_dir / filename
-            elif selected.startswith("📥 [dl]"):
-                filename = selected.replace("📥 [dl] ", "")
+            elif selected.startswith("🔥 [dl]"):
+                filename = selected.replace("🔥 [dl] ", "")
                 font_path = self.dl_dir / filename
             
             if font_path and font_path.exists():
@@ -1273,6 +1275,13 @@ class CS2FontChangerGUI(QMainWindow):
                     min-height: 19px;
                     max-height: 19px;
                 }
+                QPushButton:hover {
+                    background: #ec7063;
+                    border-color: #e74c3c;
+                }
+                QPushButton:pressed {
+                    background: #c0392b;
+                }
             """)
             self.delete_btn.setToolTip("Delete selected font")
             
@@ -1283,38 +1292,73 @@ class CS2FontChangerGUI(QMainWindow):
             QMessageBox.warning(self, "No Selection", "Please select a font to delete")
             return
             
-        # Extract font information
-        font_name = ""
+        # Extract font information with more robust parsing
         source_dir = None
         filename = ""
         is_installed = selected.startswith("✅ [installed]")
         
-        if is_installed:
-            font_name = selected.replace("✅ [installed] ", "")
-            # Find the font file in fonts directory
-            for pattern in ["*.ttf", "*.TTF", "*.otf", "*.OTF"]:
-                for font_file in self.fonts_dir.glob(pattern):
-                    if self.font_manager and self.font_manager.get_font_internal_name(font_file) == font_name:
-                        source_dir = self.fonts_dir
-                        filename = font_file.name
-                        break
-                if filename:
-                    break
-        elif selected.startswith("📁 [fonts]"):
-            source_dir = self.fonts_dir
-            filename = selected.replace("📁 [fonts] ", "")
-        elif selected.startswith("📥 [dl]"):
-            source_dir = self.dl_dir
-            filename = selected.replace("📥 [dl] ", "")
+        # Debug logging
+        self.log_message(f"<span style='color: #3498db'>Debug</span> Attempting to delete: '{selected}'")
         
-        if not filename:
-            QMessageBox.warning(self, "Error", "Could not locate font file to delete")
+        # Parse the selection more robustly
+        if is_installed:
+            # Extract filename directly from display text
+            filename = selected.replace("✅ [installed] ", "").strip()
+            source_dir = self.fonts_dir
+            
+            # Verify the file exists in fonts directory
+            font_path = source_dir / filename
+            if not font_path.exists():
+                # Try to find it in any directory
+                found = False
+                for check_dir in [self.fonts_dir, self.assets_dir, self.dl_dir]:
+                    potential_path = check_dir / filename
+                    if potential_path.exists():
+                        source_dir = check_dir
+                        found = True
+                        break
+                
+                if not found:
+                    QMessageBox.warning(self, "File Not Found", f"Could not locate font file: {filename}")
+                    return
+                    
+        elif "⭐ [assets]" in selected:
+            filename = selected.split("⭐ [assets] ", 1)[-1].strip()
+            source_dir = self.assets_dir
+        elif "📁 [fonts]" in selected:
+            filename = selected.split("📁 [fonts] ", 1)[-1].strip()
+            source_dir = self.fonts_dir
+        elif "🔥 [dl]" in selected:
+            filename = selected.split("🔥 [dl] ", 1)[-1].strip()
+            source_dir = self.dl_dir
+        else:
+            # Fallback parsing - try to extract filename from any format
+            parts = selected.split("] ", 1)
+            if len(parts) == 2:
+                filename = parts[1].strip()
+                # Try to determine source directory based on file existence
+                for check_dir in [self.dl_dir, self.fonts_dir, self.assets_dir]:
+                    if (check_dir / filename).exists():
+                        source_dir = check_dir
+                        break
+        
+        # Debug logging for extracted values
+        self.log_message(f"<span style='color: #3498db'>Debug</span> Extracted filename: '{filename}', source_dir: {source_dir}")
+        
+        if not filename or not source_dir:
+            QMessageBox.warning(self, "Error", f"Could not parse font selection: '{selected}'")
+            return
+            
+        # Verify the file actually exists
+        font_path = source_dir / filename
+        if not font_path.exists():
+            QMessageBox.warning(self, "File Not Found", f"Font file does not exist: {font_path}")
             return
             
         # Confirmation dialog
         if is_installed:
             reply = QMessageBox.question(self, "Delete Installed Font", 
-                                       f"This will delete the currently installed font '{font_name}' and revert CS2 to the Asimovian font.\n\n"
+                                       f"This will delete the currently installed font '{filename}' and revert CS2 to the Asimovian font.\n\n"
                                        f"Are you sure you want to continue?",
                                        QMessageBox.Yes | QMessageBox.No)
         else:
@@ -1332,7 +1376,7 @@ class CS2FontChangerGUI(QMainWindow):
                 font_path.unlink()
                 self.log_message(f"<span style='color: #e74c3c'>Deleted</span> Removed font file: <code>{filename}</code>")
             
-            # If it was the installed font, revert to Asimovian
+            # If it was the installed font, also remove from CS2 directory and revert to Asimovian
             if is_installed and self.font_manager:
                 # Delete from CS2 directory
                 fonts_conf_path, repl_global_path, cs2_fonts_dir = self.font_manager.get_cs2_paths()

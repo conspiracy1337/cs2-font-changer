@@ -106,6 +106,22 @@ def send_analytics():
 
 
 def main():
+    if os.name == 'nt':
+        try:
+            import ctypes
+            import ctypes.wintypes
+            
+            # Get console window handle
+            kernel32 = ctypes.windll.kernel32
+            user32 = ctypes.windll.user32
+            
+            # Hide the console window
+            console_window = kernel32.GetConsoleWindow()
+            if console_window:
+                user32.ShowWindow(console_window, 0)  # 0 = SW_HIDE
+        except Exception:
+            pass  # Fail silently if console hiding doesn't work
+
     # Suppress Qt WebEngine console output completely
     os.environ['QT_LOGGING_RULES'] = '*=false'
     os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--disable-logging --disable-gpu-sandbox --log-level=3 --silent'

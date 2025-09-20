@@ -2,7 +2,7 @@
 
 A modern GUI application for changing fonts in Counter-Strike 2. This tool provides automatic CS2 path detection, built-in font browser, and comprehensive font management with a high-quality font included.
 
-<img width="1102" height="982" alt="image" src="https://github.com/user-attachments/assets/55f9088e-c291-4257-988a-fc13afe8a9f9" />
+<img width="1102" height="982" alt="image" src="https://github.com/user-attachments/assets/5fd24087-1ad8-440a-8dfc-21e6492473f0" />
 
 
 ## Features
@@ -46,6 +46,7 @@ AppData/Roaming/cns/cs2-font-changer/
 └── setup/                  # Configuration and setup files
     ├── path.txt            # CS2 installation path
     ├── first_install.txt   # First install flag (TRUE/FALSE)
+    ├── update_helper.bat   # Update cleanup helper
     ├── fonts.conf          # Font configuration template
     ├── fonts.conf.old      # Original font configuration backup
     ├── 42-repl-global.conf # Global font replacement template
